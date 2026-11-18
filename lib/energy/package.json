@@ -1,0 +1,18 @@
+{
+  "name": "@workspace/energy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "EVPredict computational core: physics energy model, personalization, Shapley explanations, simulators, SoC-constrained routing",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:coverage": "node --experimental-strip-types --no-warnings --experimental-test-coverage --test-coverage-include='src/**' --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
