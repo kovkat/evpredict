@@ -1,83 +1,53 @@
 # EVPredict
 
-Інформаційна система прогнозування енергоспоживання електромобіля та адаптивного планування маршрутів.
+Personal EV energy forecasting and charging-aware route planning for Ukraine.
 
-Система прогнозує, скільки заряду піде на поїздку саме у цього водія, пояснює прогноз внесками чинників
-(значення Шеплі), уточнює модель за історією поїздок і будує маршрути між містами України із зарядними
-зупинками з урахуванням стану батареї, погоди, стилю водіння і надійності станцій.
+## Features
 
-## Можливості
+- Trip energy forecast: physics model + personal factor learned from trip history, Shapley explanation, what-if scenarios
+- Intercity routes with charging stops: RCSPP (label-setting + A*), station reliability index, weather and terrain
+- Battery, driver profile, charging stations and model accuracy pages
+- Auth, PostgreSQL storage, data export and account deletion
 
-- обліковий запис: реєстрація, вхід, сеанс у cookie; дані зберігаються в PostgreSQL;
-- автомобіль з довідника і стан батареї (SoH);
-- прогноз поїздки з інтервалом, поясненням і сценаріями «що буде, якщо»;
-- історія поїздок: ручне введення, імпорт і експорт CSV, тестові поїздки із симулятора (завжди позначені);
-- батарея: доступна ємність, запас ходу за температурою і типом дороги, фактичне споживання;
-- профіль водія: персональний коефіцієнт k, коефіцієнти за типами доріг, запас σ, інтервал прогнозу;
-- маршрути між 22 містами з зарядними зупинками поруч із простим планувальником, збереження планів;
-- погода на час виїзду з відкритого сервісу Open-Meteo (температура і вітер, складова назустріч рахується для кожної ділянки) і рельєф
-  (висоти міст і станцій з цифрової моделі рельєфу Copernicus DEM);
-- зарядні станції поблизу зі знімка відкритого реєстру Open Charge Map з індексом надійності;
-- моделі та точність: крива навчання, результати експерименту, реєстр усіх параметрів з походженням значень;
-- вивантаження всіх даних у JSON і видалення облікового запису.
+## Stack
 
-## Запуск
+TypeScript · pnpm workspaces · React 19, Vite, Tailwind · Express 5, Zod · Drizzle ORM, PostgreSQL (PGlite for local dev)
 
-Потрібні Node.js 22 або новіший і pnpm 10 (`corepack enable`).
+## Run
 
 ```bash
 pnpm install
-pnpm run build      # перевірка типів і збирання клієнта та сервера
-pnpm start          # http://localhost:5000
+pnpm run build
+pnpm start            # http://localhost:5000
 ```
 
-Без змінної `DATABASE_URL` сервер запускає вбудований PostgreSQL (PGlite) з даними в каталозі
-`artifacts/api-server/.data/pglite`, тому окремо встановлювати базу не потрібно. Для сервера PostgreSQL:
+Optional env: `DATABASE_URL` (embedded PGlite if unset), `PORT`, `OPEN_METEO_URL`.
+
+Dev mode:
 
 ```bash
-DATABASE_URL=postgres://user:password@host:5432/evpredict pnpm start
+pnpm --filter @workspace/api-server run dev
+pnpm --filter @workspace/evpredict run dev      # :5173, proxies /api
 ```
 
-Міграції схеми виконуються автоматично під час запуску.
-
-Розробка з автоматичним оновленням клієнта (два термінали):
+## Tests
 
 ```bash
-pnpm --filter @workspace/api-server run dev    # API на порту 5000
-pnpm --filter @workspace/evpredict run dev     # клієнт на http://localhost:5173, /api передається на 5000
+pnpm test
+pnpm --filter @workspace/energy run test:coverage
+pnpm --filter @workspace/api-server run test:coverage
 ```
 
-Змінні оточення сервера: `PORT` (5000), `DATABASE_URL`, `PGLITE_DIR` (каталог вбудованої бази або `memory`),
-`STATIC_DIR` (зібраний клієнт), `NODE_ENV=production` (cookie лише через HTTPS), `OPEN_METEO_URL` і `OPEN_METEO_ARCHIVE_URL`
-(адреси сервісу погоди; за замовчуванням https://api.open-meteo.com і https://archive-api.open-meteo.com).
-Якщо Open-Meteo недоступний, маршрут рахується з температурою, вказаною вручну. Висоти зберігаються в даних і від сервісу не залежать.
-Дані Open-Meteo безкоштовні для некомерційного використання (до 10 000 запитів на добу) з посиланням на Open-Meteo і програму Copernicus.
+## Layout
 
-## Тести
-
-```bash
-pnpm test                                         # модульні тести ядра і HTTP-тести API (база в пам'яті, імітація Open-Meteo)
-pnpm --filter @workspace/energy run test:coverage # звіт покриття ядра; так само для @workspace/api-server
-node artifacts/api-server/test/fake-open-meteo.mjs 5055 &          # імітація сервісу погоди
-OPEN_METEO_URL=http://127.0.0.1:5055 OPEN_METEO_ARCHIVE_URL=http://127.0.0.1:5055 PGLITE_DIR=memory pnpm start &
-BASE_URL=http://localhost:5000 pnpm --filter @workspace/evpredict run e2e   # наскрізні сценарії інтерфейсу (Playwright)
-```
-
-## Структура
-
-| Каталог | Вміст |
+| Path | |
 |---|---|
-| `lib/energy` | обчислювальне ядро без залежностей: фізична модель, персоналізація, пояснення Шеплі, симулятори, граф коридору, пошук плану з обмеженням на заряд, реєстр параметрів `params.ts` |
-| `lib/db` | схема бази даних (Drizzle ORM) і міграції |
-| `artifacts/api-server` | сервер Express: API прогнозу, маршрутів, станцій, облікових записів і даних користувача |
-| `artifacts/evpredict` | клієнт React |
-| `research` | експерименти і скрипти, що рахують числа для пояснювальної записки |
+| `lib/energy` | core: energy model, personalization, explanations, simulators, routing, parameter registry |
+| `lib/db` | Drizzle schema and migrations |
+| `artifacts/api-server` | Express API |
+| `artifacts/evpredict` | React client |
+| `research` | experiments and report scripts |
 
-Скрипти для пояснювальної записки:
+## Data
 
-```bash
-node --experimental-strip-types --no-warnings research/report/params_table.ts   # таблиця параметрів
-node --experimental-strip-types --no-warnings research/report/numbers.ts        # приклад Шеплі, надійність, швидкодія
-```
-
-Опис експериментів і джерел даних – у `research/README.md`.
+Open Charge Map (Ukraine snapshot, 2026-10-10) · Copernicus DEM GLO-90 via Open-Meteo · Open-Meteo weather · VED (research only)
