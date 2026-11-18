@@ -1,0 +1,84 @@
+[
+ {
+  "scenario": "informative",
+  "trips": 1200,
+  "baseline": {
+   "success_pct": 62.66666666666667,
+   "stranded_pct_of_plans": 30.94582185491277,
+   "below_reserve_pct": 48.025711662075295,
+   "mean_abs_arrival_err_pp": 9.832772296939245
+  },
+  "full": {
+   "success_pct": 80.75,
+   "stranded_pct_of_plans": 8.92857142857143,
+   "below_reserve_pct": 20.018796992481203,
+   "mean_abs_arrival_err_pp": 6.344772939007066
+  },
+  "weather": {
+   "success_pct": 81.33333333333333,
+   "stranded_pct_of_plans": 6.959008579599624,
+   "below_reserve_pct": 12.202097235462345,
+   "mean_abs_arrival_err_pp": 5.1651267228792
+  },
+  "stranded_only_full": 21,
+  "stranded_only_weather": 13,
+  "mcnemar_p": 0.22948101302608848,
+  "success_diff_pp": 0.5833333333333357,
+  "success_diff_ci95": [
+   -0.5,
+   1.7500000000000002
+  ],
+  "below_reserve_diff_pp": -6.322444678609063,
+  "below_reserve_diff_ci95": [
+   -8.324552160168599,
+   -4.214963119072708
+  ],
+  "common_completed": 949,
+  "abs_err_full_pp": 6.339817678475431,
+  "abs_err_weather_pp": 5.196471728025328,
+  "abs_err_wilcoxon_p": 2.917966434201519e-11,
+  "time_diff_min_mean": 0.5487983217595889,
+  "time_wilcoxon_p": 0.03190753477341277
+ },
+ {
+  "scenario": "random",
+  "trips": 1200,
+  "baseline": {
+   "success_pct": 63.583333333333336,
+   "stranded_pct_of_plans": 29.935720844811755,
+   "below_reserve_pct": 47.474747474747474,
+   "mean_abs_arrival_err_pp": 9.850261758830486
+  },
+  "full": {
+   "success_pct": 82.25,
+   "stranded_pct_of_plans": 7.236842105263152,
+   "below_reserve_pct": 19.172932330827066,
+   "mean_abs_arrival_err_pp": 6.25366865723404
+  },
+  "weather": {
+   "success_pct": 83.0,
+   "stranded_pct_of_plans": 5.052430886558623,
+   "below_reserve_pct": 11.3441372735939,
+   "mean_abs_arrival_err_pp": 5.0662733545349425
+  },
+  "stranded_only_full": 20,
+  "stranded_only_weather": 8,
+  "mcnemar_p": 0.03569813817739487,
+  "success_diff_pp": 0.7499999999999951,
+  "success_diff_ci95": [
+   -0.33333333333333337,
+   1.8333333333333333
+  ],
+  "below_reserve_diff_pp": -6.082474226804124,
+  "below_reserve_diff_ci95": [
+   -8.144329896907216,
+   -4.123711340206185
+  ],
+  "common_completed": 970,
+  "abs_err_full_pp": 6.254583899507767,
+  "abs_err_weather_pp": 5.096190540329573,
+  "abs_err_wilcoxon_p": 2.970159019481554e-11,
+  "time_diff_min_mean": 0.18663138307772248,
+  "time_wilcoxon_p": 0.3288813416841525
+ }
+]

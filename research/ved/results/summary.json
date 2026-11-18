@@ -1,0 +1,11 @@
+{
+  "trips": 2317,
+  "vehicles": 26,
+  "ev_trips": 458,
+  "whkm_median": 159.6913656638976,
+  "dist_km_median": 4.416619615965559,
+  "oat_min": -15.85062611806798,
+  "oat_max": 35.76095238095238,
+  "trips_after10": 2088,
+  "trips_long": 193
+}
