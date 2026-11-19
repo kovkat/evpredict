@@ -5,7 +5,7 @@ Personal EV energy forecasting and charging-aware route planning for Ukraine.
 ## Features
 
 - Trip energy forecast: physics model + personal factor learned from trip history, Shapley explanation, what-if scenarios
-- Intercity routes with charging stops: RCSPP (label-setting + A*), station reliability index, weather and terrain
+- Intercity routes with charging stops: RCSPP (label-setting + A*), station reliability index, weather and terrain, user-defined charging points (home, AC sockets)
 - Battery, driver profile, charging stations and model accuracy pages
 - Auth, PostgreSQL storage, data export and account deletion
 
@@ -50,4 +50,6 @@ pnpm --filter @workspace/api-server run test:coverage
 
 ## Data
 
-Open Charge Map (Ukraine snapshot, 2026-10-10) · Copernicus DEM GLO-90 via Open-Meteo · Open-Meteo weather · VED (research only)
+Open Charge Map (Ukraine snapshot, 2026-10-10) · Copernicus DEM GLO-90 via Open-Meteo · Open-Meteo weather · Open EV Data by Chargeprice (MIT) · OSRM / OpenStreetMap · WLTC (UN GTR 15) · VED (research only)
+
+Parameter sources: `lib/energy/src/params.ts`, derivations in `research/params`.
