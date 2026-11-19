@@ -20,6 +20,7 @@ import {
 // Знімок відкритого набору Open Charge Map для України (research/stations/prepare_ocm.py)
 import uaStations from "../data/ua_stations.json" with { type: "json" };
 import { tripWeather, weatherAt } from "../lib/open-meteo.js";
+import { ownStationsForRequest } from "../lib/own-stations.js";
 
 export const STATIONS = uaStations as StationRecord[];
 export const STATIONS_SNAPSHOT = "2026-10-10"; // дата завантаження експорту
@@ -145,7 +146,7 @@ export const routeRequestSchema = vehicleRefSchema.extend({
 export type RouteRequest = z.infer<typeof routeRequestSchema>;
 
 /** Перевірка запиту, погода і рельєф з Open-Meteo, побудова обох планів; повертає HTTP-статус і тіло відповіді */
-export async function planRouteRequest(body: unknown): Promise<{ status: number; payload: Record<string, unknown>; request?: RouteRequest & { tempC: number } }> {
+export async function planRouteRequest(body: unknown, own: StationRecord[] = []): Promise<{ status: number; payload: Record<string, unknown>; request?: RouteRequest & { tempC: number } }> {
   const parsed = routeRequestSchema.safeParse(body);
   if (!parsed.success) return { status: 400, payload: { error: "Некоректний запит маршруту", details: z.flattenError(parsed.error) } };
   const b = parsed.data;
@@ -168,8 +169,9 @@ export async function planRouteRequest(body: unknown): Promise<{ status: number;
   const flat = <T extends { elevM?: number }>(p: T) => (relief ? p : { ...p, elevM: 0 });
   const result = planRoute({
     from: flat(from), to: flat(to), vehicle, ratedVehicle: model.params, connectors: model.connectors, maxDcKw: model.maxDcKw,
+    maxAcKw: model.maxAcKw,
     socStartPct: b.socStartPct, reservePct: b.reservePct, tempC, wind: weather?.wind, personalFactor: b.personalFactor ?? 1,
-    roadFactors: b.roadFactors, safetyFactor: b.safetyFactor, stations: relief ? STATIONS : STATIONS.map(flat),
+    roadFactors: b.roadFactors, safetyFactor: b.safetyFactor, stations: [...STATIONS, ...own].map((s) => (relief ? s : flat(s))),
   });
   const conditions = {
     tempC, headWindMs: weather?.headWindMs ?? 0, departure: departure.toISOString(),
@@ -179,13 +181,13 @@ export async function planRouteRequest(body: unknown): Promise<{ status: number;
   };
   return {
     status: 200, request: { ...b, tempC },
-    payload: { from, to, dcCapable: model.maxDcKw > 0, snapshot: STATIONS_SNAPSHOT, safetyFactor: b.safetyFactor ?? DEFAULT_SAFETY, conditions, ...result },
+    payload: { from, to, dcCapable: model.maxDcKw > 0, ownStations: own.length, snapshot: STATIONS_SNAPSHOT, safetyFactor: b.safetyFactor ?? DEFAULT_SAFETY, conditions, ...result },
   };
 }
 
 router.post("/route/plan", async (req, res, next) => {
   try {
-    const r = await planRouteRequest(req.body);
+    const r = await planRouteRequest(req.body, await ownStationsForRequest(req, STATIONS));
     res.status(r.status).json(r.payload);
   } catch (e) { next(e); }
 });

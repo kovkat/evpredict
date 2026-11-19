@@ -157,6 +157,37 @@ test("дані користувача: автомобіль, історія, п�
   assert.equal((await a("POST", "/auth/login", { email: "driver@example.com", password: "12345678" })).status, 401);
 });
 
+test("власні точки заряду: додавання, використання в плані лише власником, видалення", async () => {
+  const a = jar(), b = jar();
+  await a("POST", "/auth/register", { email: "own@example.com", password: "12345678" });
+  await b("POST", "/auth/register", { email: "own2@example.com", password: "12345678" });
+  assert.equal((await fetch(base + "/me/stations")).status, 401);
+  assert.equal((await a("POST", "/me/stations", { title: "Дача", lat: 60, lon: 30, maxKw: 7, dc: false })).status, 400);
+  assert.equal((await a("POST", "/me/stations", { title: "", lat: 50.35, lon: 29.6, maxKw: 7, dc: false })).status, 400);
+  const created = await a("POST", "/me/stations", { title: "Дача", lat: 50.35, lon: 29.6, maxKw: 7.4, dc: false });
+  assert.equal(created.status, 201);
+  const own = await created.json();
+  assert.deepEqual((await (await a("GET", "/me/stations")).json()).map((s) => s.title), ["Дача"]);
+  assert.deepEqual(await (await b("GET", "/me/stations")).json(), []);
+  // Fiat 500e без DC: Київ → Житомир (≈ 164 км) без власної точки неможливий, з нею – через неї
+  const req = { vehicleId: "fiat-500e-2013", sohPct: 100, fromId: "kyiv", toId: "zhytomyr", socStartPct: 100, reservePct: 10, tempC: 15 };
+  const anon = await (await post("/route/plan", req)).json();
+  assert.equal(anon.evpredict.found, false);
+  assert.equal(anon.ownStations, 0);
+  const mine = await (await a("POST", "/route/plan", req)).json();
+  assert.equal(mine.ownStations, 1);
+  const stop = mine.evpredict.stops.find((s) => s.kind === "station");
+  assert.ok(mine.evpredict.found && stop.own && stop.ac && stop.title === "Дача" && stop.maxKw === 6.6, JSON.stringify(stop));
+  assert.equal((await (await b("POST", "/route/plan", req)).json()).evpredict.found, false);
+  assert.equal((await a("POST", "/me/routes", req)).status, 201);
+  assert.equal((await a("GET", "/me/export").then((r) => r.json())).ownStations[0].title, "Дача");
+  // чужу точку видалити не можна
+  assert.equal((await b("DELETE", `/me/stations/${own.id}`)).status, 404);
+  assert.equal((await a("DELETE", `/me/stations/${own.id}`)).status, 200);
+  assert.deepEqual(await (await a("GET", "/me/stations")).json(), []);
+  assert.equal((await a("DELETE", "/me")).status, 200);
+});
+
 // ---------- погода (імітація Open-Meteo) і рельєф (висоти з даних) ----------
 const day = 86400000;
 const weather = (lat, lon, t) => fetch(`${base}/weather?lat=${lat}&lon=${lon}${t ? `&time=${new Date(t).toISOString()}` : ""}`);

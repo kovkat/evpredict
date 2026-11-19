@@ -1,13 +1,14 @@
 // Облікові записи і дані користувача в базі: вхід і реєстрація, автомобіль, історія поїздок,
-// персональна модель (перераховується після кожного збереження історії), збережені плани маршрутів.
+// персональна модель (перераховується після кожного збереження історії), власні точки заряду, збережені плани маршрутів.
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { findVehicle, replayHistory, safetyFromHistory, MIN_SOC_DROP_FOR_LEARNING, type TripRecord, type RouteOption } from "@workspace/energy";
-import { personalModels, routePlans, routeStops, trips, users, vehicles, type Db } from "@workspace/db";
+import { ownStations, personalModels, routePlans, routeStops, trips, users, vehicles, type Db } from "@workspace/db";
 import { withDb } from "../lib/db.js";
 import { currentUser, endSession, hashPassword, requireUser, resetAttempts, startSession, tooManyAttempts, verifyPassword } from "../lib/auth.js";
-import { planRouteRequest, recordSchema, resolveVehicle } from "./energy.js";
+import { STATIONS, planRouteRequest, recordSchema, resolveVehicle } from "./energy.js";
+import { ownStationRecords } from "../lib/own-stations.js";
 
 const router: IRouter = Router();
 router.use(["/auth", "/me"], withDb);
@@ -175,6 +176,7 @@ router.get("/me/export", async (req, res, next) => {
     const ts = ids.length ? await req.db.select().from(trips).where(inArray(trips.vehicleId, ids)) : [];
     const pm = ids.length ? await req.db.select().from(personalModels).where(inArray(personalModels.vehicleId, ids)) : [];
     const rp = ids.length ? await req.db.select().from(routePlans).where(inArray(routePlans.vehicleId, ids)) : [];
+    const os = await req.db.select().from(ownStations).where(eq(ownStations.userId, req.user.id));
     res.setHeader("Content-Disposition", `attachment; filename="evpredict-export.json"`);
     res.json({
       exportedAt: new Date().toISOString(), user: req.user,
@@ -182,6 +184,7 @@ router.get("/me/export", async (req, res, next) => {
         trips: ts.filter((t) => t.vehicleId === v.id).map(toRecord),
         personalModel: pm.find((m) => m.vehicleId === v.id) ?? null,
         routePlans: rp.filter((r) => r.vehicleId === v.id) })),
+      ownStations: os.map(({ userId: _u, ...o }) => o),
     });
   } catch (e) { next(e); }
 });
@@ -194,10 +197,49 @@ router.delete("/me", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---------- власні точки заряду ----------
+const MAX_OWN_STATIONS = 20;
+const ownStationSchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  lat: z.number().min(44).max(53),            // межі України, як для пошуку станцій поблизу
+  lon: z.number().min(22).max(41),
+  maxKw: z.number().min(1).max(400),
+  dc: z.boolean(),
+});
+
+router.get("/me/stations", async (req, res, next) => {
+  try {
+    const rows = await req.db.select().from(ownStations).where(eq(ownStations.userId, req.user.id)).orderBy(ownStations.id);
+    res.json(rows.map(({ userId: _u, ...o }) => o));
+  } catch (e) { next(e); }
+});
+
+router.post("/me/stations", async (req, res, next) => {
+  try {
+    const parsed = ownStationSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Перевірте назву, координати в межах України і потужність 1–400 кВт", details: z.flattenError(parsed.error) });
+    const existing = await req.db.select({ id: ownStations.id }).from(ownStations).where(eq(ownStations.userId, req.user.id));
+    if (existing.length >= MAX_OWN_STATIONS) return res.status(400).json({ error: `Можна зберегти не більше ${MAX_OWN_STATIONS} власних точок` });
+    const [row] = await req.db.insert(ownStations).values({ ...parsed.data, userId: req.user.id }).returning();
+    const { userId: _u, ...o } = row;
+    return res.status(201).json(o);
+  } catch (e) { return next(e); }
+});
+
+router.delete("/me/stations/:id", async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Некоректний ідентифікатор" });
+    const del = await req.db.delete(ownStations).where(and(eq(ownStations.id, id), eq(ownStations.userId, req.user.id))).returning({ id: ownStations.id });
+    if (!del.length) return res.status(404).json({ error: "Точку не знайдено" });
+    return res.json({ ok: true });
+  } catch (e) { return next(e); }
+});
+
 // ---------- збережені плани маршрутів ----------
 router.post("/me/routes", async (req, res, next) => {
   try {
-    const r = await planRouteRequest(req.body);
+    const r = await planRouteRequest(req.body, await ownStationRecords(req.db, req.user.id, STATIONS));
     if (r.status !== 200 || !r.request) return res.status(r.status).json(r.payload);
     const body = r.request;
     const v = await upsertVehicle(req.db, req.user.id, body.vehicleId);
