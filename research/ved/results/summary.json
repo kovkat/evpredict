@@ -7,5 +7,7 @@
   "oat_min": -15.85062611806798,
   "oat_max": 35.76095238095238,
   "trips_after10": 2088,
-  "trips_long": 193
+  "trips_long": 193,
+  "test_vehicles": 9,
+  "trips_test": 1269
 }

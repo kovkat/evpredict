@@ -3,82 +3,82 @@
   "scenario": "informative",
   "trips": 1200,
   "baseline": {
-   "success_pct": 62.66666666666667,
-   "stranded_pct_of_plans": 30.94582185491277,
-   "below_reserve_pct": 48.025711662075295,
-   "mean_abs_arrival_err_pp": 9.832772296939245
+   "success_pct": 41.41666666666667,
+   "stranded_pct_of_plans": 57.98816568047338,
+   "below_reserve_pct": 73.28825021132714,
+   "mean_abs_arrival_err_pp": 14.910462117866947
   },
   "full": {
-   "success_pct": 80.75,
-   "stranded_pct_of_plans": 8.92857142857143,
-   "below_reserve_pct": 20.018796992481203,
-   "mean_abs_arrival_err_pp": 6.344772939007066
+   "success_pct": 83.33333333333334,
+   "stranded_pct_of_plans": 12.049252418645562,
+   "below_reserve_pct": 24.450307827616534,
+   "mean_abs_arrival_err_pp": 6.591670022146532
   },
   "weather": {
-   "success_pct": 81.33333333333333,
-   "stranded_pct_of_plans": 6.959008579599624,
-   "below_reserve_pct": 12.202097235462345,
-   "mean_abs_arrival_err_pp": 5.1651267228792
+   "success_pct": 83.91666666666666,
+   "stranded_pct_of_plans": 10.963748894783375,
+   "below_reserve_pct": 17.418213969938108,
+   "mean_abs_arrival_err_pp": 5.692180914115111
   },
-  "stranded_only_full": 21,
-  "stranded_only_weather": 13,
-  "mcnemar_p": 0.22948101302608848,
-  "success_diff_pp": 0.5833333333333357,
+  "stranded_only_full": 26,
+  "stranded_only_weather": 19,
+  "mcnemar_p": 0.3712980344710104,
+  "success_diff_pp": 0.5833333333333246,
   "success_diff_ci95": [
    -0.5,
    1.7500000000000002
   ],
-  "below_reserve_diff_pp": -6.322444678609063,
+  "below_reserve_diff_pp": -6.945863125638406,
   "below_reserve_diff_ci95": [
-   -8.324552160168599,
-   -4.214963119072708
+   -9.090909090909092,
+   -4.800817160367722
   ],
-  "common_completed": 949,
-  "abs_err_full_pp": 6.339817678475431,
-  "abs_err_weather_pp": 5.196471728025328,
-  "abs_err_wilcoxon_p": 2.917966434201519e-11,
-  "time_diff_min_mean": 0.5487983217595889,
-  "time_wilcoxon_p": 0.03190753477341277
+  "common_completed": 979,
+  "abs_err_full_pp": 6.612212695218526,
+  "abs_err_weather_pp": 5.725218216088199,
+  "abs_err_wilcoxon_p": 7.32487189137319e-09,
+  "time_diff_min_mean": 1.0770601682226704,
+  "time_wilcoxon_p": 0.13433514019857182
  },
  {
   "scenario": "random",
   "trips": 1200,
   "baseline": {
-   "success_pct": 63.583333333333336,
-   "stranded_pct_of_plans": 29.935720844811755,
-   "below_reserve_pct": 47.474747474747474,
-   "mean_abs_arrival_err_pp": 9.850261758830486
+   "success_pct": 41.083333333333336,
+   "stranded_pct_of_plans": 58.32628909551987,
+   "below_reserve_pct": 73.28825021132714,
+   "mean_abs_arrival_err_pp": 14.72278876542893
   },
   "full": {
-   "success_pct": 82.25,
-   "stranded_pct_of_plans": 7.236842105263152,
-   "below_reserve_pct": 19.172932330827066,
-   "mean_abs_arrival_err_pp": 6.25366865723404
+   "success_pct": 84.91666666666666,
+   "stranded_pct_of_plans": 10.378188214599826,
+   "below_reserve_pct": 22.427440633245382,
+   "mean_abs_arrival_err_pp": 6.450838648825803
   },
   "weather": {
-   "success_pct": 83.0,
-   "stranded_pct_of_plans": 5.052430886558623,
-   "below_reserve_pct": 11.3441372735939,
-   "mean_abs_arrival_err_pp": 5.0662733545349425
+   "success_pct": 85.41666666666666,
+   "stranded_pct_of_plans": 9.372236958443859,
+   "below_reserve_pct": 16.180371352785148,
+   "mean_abs_arrival_err_pp": 5.499881917795399
   },
-  "stranded_only_full": 20,
-  "stranded_only_weather": 8,
-  "mcnemar_p": 0.03569813817739487,
-  "success_diff_pp": 0.7499999999999951,
+  "stranded_only_full": 27,
+  "stranded_only_weather": 21,
+  "mcnemar_p": 0.470879013621712,
+  "success_diff_pp": 0.5000000000000004,
   "success_diff_ci95": [
-   -0.33333333333333337,
-   1.8333333333333333
+   -0.75,
+   1.7500000000000002
   ],
-  "below_reserve_diff_pp": -6.082474226804124,
+  "below_reserve_diff_pp": -6.432160804020101,
   "below_reserve_diff_ci95": [
-   -8.144329896907216,
-   -4.123711340206185
+   -8.542713567839195,
+   -4.321608040201005
   ],
-  "common_completed": 970,
-  "abs_err_full_pp": 6.254583899507767,
-  "abs_err_weather_pp": 5.096190540329573,
-  "abs_err_wilcoxon_p": 2.970159019481554e-11,
-  "time_diff_min_mean": 0.18663138307772248,
-  "time_wilcoxon_p": 0.3288813416841525
+  "common_completed": 995,
+  "abs_err_full_pp": 6.477684500499977,
+  "abs_err_weather_pp": 5.497084115086033,
+  "abs_err_wilcoxon_p": 4.853178931002158e-10,
+  "time_diff_min_mean": 0.6502132775875068,
+  "time_wilcoxon_p": 0.43123823258773464
  }
 ]
