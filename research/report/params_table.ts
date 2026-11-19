@@ -10,25 +10,26 @@ const GROUPS: Record<Group, string> = {
   "what-if": "Сценарії «що буде, якщо»", reliability: "Індекс надійності станцій", graph: "Граф коридору",
   search: "Пошук плану", charging: "Заряджання", baseline: "Базовий планувальник", replanning: "Перепланування",
 };
-const PLAN = { literature: "літературне джерело", calibration: "калібрування на синтетичних поїздках",
-  sensitivity: "аналіз чутливості на симуляторі", "road-data": "дані дорожньої мережі" } as const;
+const PLAN = { sensitivity: "аналіз чутливості (research/sensitivity)" } as const;
 
 const fmt = (x: number) => String(x).replace("-", "−").replace(".", ",");
 const value = (p: ParamDef) => (typeof p.value === "number" ? fmt(p.value) : p.value.map(fmt).join("; ")) + (p.unit ? ` ${p.unit}` : "");
 const origin = (p: ParamDef) => {
   switch (p.origin) {
     case "physical": return "фізична стала";
-    case "regulation": return p.ref!;
-    case "derived": return `виведено: ${p.note}`;
+    case "regulation": return p.ref! + (p.note ? ` (${p.note})` : "");
+    case "literature": return `${p.ref}${p.note ? ` (${p.note})` : ""}`;
+    case "derived": return `виведено: ${p.note}${p.ref ? ` [${p.ref}]` : ""}`;
+    case "calibrated": return `калібровано: ${p.note}`;
     case "convention": return `статистична домовленість${p.note ? `: ${p.note}` : ""}${p.ref ? ` [${p.ref}]` : ""}`;
     case "definition": return `визначення${p.note ? `: ${p.note}` : ""}`;
-    case "provisional": return `попереднє значення; обґрунтування – ${PLAN[p.plan!]}`;
+    case "provisional": return `без прямого джерела; перевірка – ${PLAN[p.plan!]}`;
   }
 };
 
 const all = Object.values(PARAMS) as ParamDef[];
 const lines = ["# Параметри моделей і алгоритму EVPredict", "",
-  "Згенеровано з `lib/energy/src/params.ts`. Значення з позначкою «попереднє» використовуються прототипом до калібрування.", ""];
+  "Згенеровано з `lib/energy/src/params.ts`. Скрипти, з яких виведено значення, – у `research/params`.", ""];
 const counts: Record<string, number> = {};
 for (const g of Object.keys(GROUPS) as Group[]) {
   const ps = all.filter((p) => p.group === g);
@@ -40,7 +41,16 @@ for (const g of Object.keys(GROUPS) as Group[]) {
   }
   lines.push("");
 }
-lines.push("## Підсумок", "", ...Object.entries(counts).map(([k, n]) => `- ${k}: ${n}`), `- усього: ${all.length}`, "");
+// три рівні обґрунтування: параметри не мають однакової наукової ваги, і таблиця це показує
+const CATEGORY: [string, string, string[]][] = [
+  ["Фізичні сталі, нормативи, дослідження", "публікації, нормативні документи, фізичні сталі", ["physical", "regulation", "literature"]],
+  ["Параметри з даних", "розрахунок за реальними наборами даних (WLTC, OSRM, Open EV Data, OCM) і властивостями моделі", ["derived"]],
+  ["Алгоритмічні параметри", "калібрування на синтетиці з перевіркою на VED; аналіз чутливості ±50 %", ["calibrated", "provisional"]],
+  ["Визначення і домовленості", "на точність прогнозу не впливають (еталони пояснення, налаштування, статистичні домовленості)", ["definition", "convention"]],
+];
+lines.push("## Підсумок за рівнем обґрунтування", "", "| Категорія | Метод | Кількість |", "|---|---|---|",
+  ...CATEGORY.map(([name, method, os]) => `| ${name} | ${method} | ${os.reduce((s, o) => s + (counts[o] ?? 0), 0)} |`),
+  `| Усього | | ${all.length} |`, "", ...Object.entries(counts).map(([k, n]) => `- ${k}: ${n}`), "");
 const out = new URL("../results/", import.meta.url).pathname;
 mkdirSync(out, { recursive: true });
 writeFileSync(`${out}params.md`, lines.join("\n"));

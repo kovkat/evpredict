@@ -1,0 +1,45 @@
+{
+ "source": "U.S. DOE VTO Program Record, Sep 2024 (ANL APRF data)",
+ "comfort_c": 21.0,
+ "h_w_per_c": 87.3,
+ "h_per_vehicle": [
+  79.2,
+  95.5
+ ],
+ "p0_w": 185.0,
+ "rmse_w": 351.0,
+ "points": [
+  {
+   "ambient_c": -6.7,
+   "hvac_w": 1848
+  },
+  {
+   "ambient_c": -6.7,
+   "hvac_w": 2898
+  },
+  {
+   "ambient_c": -17.8,
+   "hvac_w": 3376
+  },
+  {
+   "ambient_c": -17.8,
+   "hvac_w": 3732
+  },
+  {
+   "ambient_c": 22.2,
+   "hvac_w": 0
+  },
+  {
+   "ambient_c": 22.2,
+   "hvac_w": 0
+  },
+  {
+   "ambient_c": 35.0,
+   "hvac_w": 956
+  },
+  {
+   "ambient_c": 35.0,
+   "hvac_w": 755
+  }
+ ]
+}

@@ -1,0 +1,266 @@
+{
+ "source": "Open EV Data (github.com/KilowattApp/open-ev-data), MIT",
+ "updated_at": "2025-04-12T15:03:50.025Z",
+ "vehicles": {
+  "fiat-500e-2013": {
+   "oed_id": "53f0d524-01bf-dace-0553-897eef13cb0c",
+   "name": "Fiat 500e",
+   "release_year": 2013,
+   "usable_kwh": 21.3,
+   "usable_from": "53f0d524-01bf-dace-0553-897eef13cb0c",
+   "avg_consumption_kwh_100km": 13.5,
+   "dc_max_kw": 40,
+   "default_curve": true,
+   "curve": [
+    [
+     0,
+     38
+    ],
+    [
+     75,
+     40
+    ],
+    [
+     100,
+     6.6
+    ]
+   ]
+  },
+  "nissan-leaf-24": {
+   "oed_id": "dc7d163b-29bc-45cf-8156-60eb3e3b1294",
+   "name": "Nissan Leaf 24 kWh",
+   "release_year": 2011,
+   "usable_kwh": 22,
+   "usable_from": "294fb510-34b8-49be-8cf8-419d1557585a",
+   "avg_consumption_kwh_100km": 16.9,
+   "dc_max_kw": 46,
+   "default_curve": false,
+   "curve": [
+    [
+     0,
+     40
+    ],
+    [
+     22,
+     46
+    ],
+    [
+     100,
+     10
+    ]
+   ]
+  },
+  "nissan-leaf-40": {
+   "oed_id": "77028f96-eb9b-4c65-b452-c92011b1fc1c",
+   "name": "Nissan Leaf 40 kWh",
+   "release_year": 2018,
+   "usable_kwh": 38,
+   "usable_from": "77028f96-eb9b-4c65-b452-c92011b1fc1c",
+   "avg_consumption_kwh_100km": 16.4,
+   "dc_max_kw": 45,
+   "default_curve": false,
+   "curve": [
+    [
+     0,
+     41
+    ],
+    [
+     62,
+     45
+    ],
+    [
+     65,
+     36
+    ],
+    [
+     100,
+     15
+    ]
+   ]
+  },
+  "tesla-model-3-sr": {
+   "oed_id": "93c82e06-1aa3-4c19-8f81-b9fac0c598c3",
+   "name": "Tesla Model 3 SR+",
+   "release_year": 2022,
+   "usable_kwh": 50,
+   "usable_from": "93c82e06-1aa3-4c19-8f81-b9fac0c598c3",
+   "avg_consumption_kwh_100km": 15.3,
+   "dc_max_kw": 149,
+   "default_curve": false,
+   "curve": [
+    [
+     0,
+     130
+    ],
+    [
+     52,
+     149
+    ],
+    [
+     60,
+     110
+    ],
+    [
+     100,
+     12
+    ]
+   ]
+  },
+  "tesla-model-y-lr": {
+   "oed_id": "aade3809-159e-415d-a9ce-e5633a173fb8",
+   "name": "Tesla Model Y Long Range",
+   "release_year": 2020,
+   "usable_kwh": 72.5,
+   "usable_from": "aade3809-159e-415d-a9ce-e5633a173fb8",
+   "avg_consumption_kwh_100km": 14.4,
+   "dc_max_kw": 246,
+   "default_curve": false,
+   "curve": [
+    [
+     0,
+     246
+    ],
+    [
+     35,
+     238
+    ],
+    [
+     75,
+     99
+    ],
+    [
+     100,
+     18
+    ]
+   ]
+  },
+  "chevrolet-bolt": {
+   "oed_id": "36f83e57-b697-66f0-2ba4-693e6f9d91ef",
+   "name": "Chevrolet Bolt 66 kWh",
+   "release_year": 2020,
+   "usable_kwh": 66,
+   "usable_from": "36f83e57-b697-66f0-2ba4-693e6f9d91ef",
+   "avg_consumption_kwh_100km": 12.9,
+   "dc_max_kw": 55,
+   "default_curve": false,
+   "curve": [
+    [
+     0,
+     55
+    ],
+    [
+     56,
+     38
+    ],
+    [
+     68,
+     24
+    ],
+    [
+     85,
+     16
+    ],
+    [
+     100,
+     7
+    ]
+   ]
+  },
+  "kia-niro-ev-64": {
+   "oed_id": "68cbedff-8994-4b77-bfb5-6aa22962e3a2",
+   "name": "Kia e-Niro 64 kWh",
+   "release_year": 2020,
+   "usable_kwh": 64,
+   "usable_from": "68cbedff-8994-4b77-bfb5-6aa22962e3a2",
+   "avg_consumption_kwh_100km": 17.3,
+   "dc_max_kw": 77,
+   "default_curve": false,
+   "curve": [
+    [
+     0,
+     70
+    ],
+    [
+     40,
+     77
+    ],
+    [
+     42,
+     70
+    ],
+    [
+     53,
+     71
+    ],
+    [
+     55,
+     57
+    ],
+    [
+     71,
+     58
+    ],
+    [
+     72,
+     38
+    ],
+    [
+     76,
+     38
+    ],
+    [
+     78,
+     25
+    ],
+    [
+     88,
+     25
+    ],
+    [
+     100,
+     8
+    ]
+   ]
+  },
+  "vw-id4-77": {
+   "oed_id": "cfe2ae21-4c85-5f4f-0603-52980ce580f2",
+   "name": "Volkswagen ID.4 Pro 4MOTION",
+   "release_year": 2024,
+   "usable_kwh": 77,
+   "usable_from": "cfe2ae21-4c85-5f4f-0603-52980ce580f2",
+   "avg_consumption_kwh_100km": 18.1,
+   "dc_max_kw": 135,
+   "default_curve": false,
+   "curve": [
+    [
+     0,
+     115
+    ],
+    [
+     15,
+     135
+    ],
+    [
+     30,
+     135
+    ],
+    [
+     50,
+     110
+    ],
+    [
+     70,
+     70
+    ],
+    [
+     80,
+     50
+    ],
+    [
+     100,
+     25
+    ]
+   ]
+  }
+ }
+}

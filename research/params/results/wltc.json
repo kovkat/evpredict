@@ -1,0 +1,96 @@
+{
+ "source": "UN GTR No. 15, WLTC class 3b; JRC wltp package",
+ "phases": {
+  "low": {
+   "parts": [
+    0,
+    589
+   ],
+   "distance_km": 3.095,
+   "duration_s": 590,
+   "mean_speed_kmh": 18.9,
+   "moving_speed_kmh": 25.3,
+   "full_stops_per_km": 1.62,
+   "pke_m_s2": 0.4133
+  },
+  "medium": {
+   "parts": [
+    590,
+    1022
+   ],
+   "distance_km": 4.756,
+   "duration_s": 433,
+   "mean_speed_kmh": 39.5,
+   "moving_speed_kmh": 44.5,
+   "full_stops_per_km": 0.21,
+   "pke_m_s2": 0.3973
+  },
+  "high": {
+   "parts": [
+    1023,
+    1477
+   ],
+   "distance_km": 7.162,
+   "duration_s": 455,
+   "mean_speed_kmh": 56.7,
+   "moving_speed_kmh": 60.7,
+   "full_stops_per_km": 0.14,
+   "pke_m_s2": 0.2679
+  },
+  "extra_high": {
+   "parts": [
+    1478,
+    1800
+   ],
+   "distance_km": 8.254,
+   "duration_s": 323,
+   "mean_speed_kmh": 92.0,
+   "moving_speed_kmh": 94.0,
+   "full_stops_per_km": 0.12,
+   "pke_m_s2": 0.2506
+  },
+  "city": {
+   "parts": [
+    0,
+    1022
+   ],
+   "distance_km": 7.85,
+   "duration_s": 1023,
+   "mean_speed_kmh": 27.6,
+   "moving_speed_kmh": 34.3,
+   "full_stops_per_km": 0.76,
+   "pke_m_s2": 0.4036
+  }
+ },
+ "equivalent_accelerations_per_km": {
+  "city": {
+   "phase": "city",
+   "speed_kmh": 34,
+   "n": 4.52
+  },
+  "high": {
+   "phase": "high",
+   "speed_kmh": 61,
+   "n": 0.93
+  },
+  "extra_high": {
+   "phase": "extra_high",
+   "speed_kmh": 110,
+   "n": 0.27
+  },
+  "city_edge": {
+   "phase": "city",
+   "speed_kmh": 50,
+   "n": 2.09
+  },
+  "highway_edge": {
+   "phase": "extra_high",
+   "speed_kmh": 90,
+   "n": 0.4
+  }
+ },
+ "braking": {
+  "regen_fraction_weighted": 0.898,
+  "note": "exp(-0.0411/|a|) weighted by released kinetic energy, Fiori et al. 2016"
+ }
+}

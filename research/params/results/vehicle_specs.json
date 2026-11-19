@@ -1,0 +1,119 @@
+{
+ "driverKg": 75,
+ "areaFactor": 0.85,
+ "sources": {
+  "fiat_media": "Stellantis (FCA US) Media, «2013 Fiat 500e: Design», 27.11.2012 – Cd 0,311",
+  "fiat_spec": "FIAT USA, All-new 2013 FIAT 500e Specifications, 04.2013 (копія на fiat500usa.com) – маса, ширина, висота",
+  "nissan_2015": "Nissan USA, 2015 Nissan LEAF Press Kit, 27.06.2014 – Cd, маса (S), ширина, висота",
+  "nissan_2018": "Nissan USA, 2018 Nissan LEAF Press Kit, 04.12.2017 – Cd, маса (S), ширина, висота",
+  "gm_2020": "Chevrolet, 2020 Chevrolet Bolt EV Specifications – маса, ширина, висота",
+  "vw_id4": "Volkswagen Newsroom, «The ID.4 – The highlights» – Cd 0,28",
+  "evspecs": "EVSpecifications.com (сторінки моделей, звернення 19.11.2026) – значення без первинного документа виробника"
+ },
+ "vehicles": {
+  "fiat-500e-2013": {
+   "curb_kg": 1355,
+   "cd": 0.311,
+   "width_mm": 1627,
+   "height_mm": 1527,
+   "src": {
+    "curb": "fiat_spec",
+    "cd": "fiat_media",
+    "dims": "fiat_spec"
+   },
+   "massKg": 1430,
+   "frontalAreaM2": 2.11
+  },
+  "nissan-leaf-24": {
+   "curb_kg": 1471,
+   "cd": 0.28,
+   "width_mm": 1770,
+   "height_mm": 1549,
+   "src": {
+    "curb": "nissan_2015",
+    "cd": "nissan_2015",
+    "dims": "nissan_2015"
+   },
+   "massKg": 1546,
+   "frontalAreaM2": 2.33
+  },
+  "nissan-leaf-40": {
+   "curb_kg": 1557,
+   "cd": 0.28,
+   "width_mm": 1791,
+   "height_mm": 1560,
+   "src": {
+    "curb": "nissan_2018",
+    "cd": "nissan_2018",
+    "dims": "nissan_2018"
+   },
+   "massKg": 1632,
+   "frontalAreaM2": 2.37
+  },
+  "tesla-model-3-sr": {
+   "curb_kg": 1611,
+   "cd": 0.23,
+   "width_mm": 1849,
+   "height_mm": 1443,
+   "src": {
+    "curb": "evspecs",
+    "cd": "evspecs",
+    "dims": "evspecs"
+   },
+   "massKg": 1686,
+   "frontalAreaM2": 2.27
+  },
+  "tesla-model-y-lr": {
+   "curb_kg": 1979,
+   "cd": 0.23,
+   "width_mm": 1921,
+   "height_mm": 1624,
+   "src": {
+    "curb": "evspecs",
+    "cd": "evspecs",
+    "dims": "evspecs"
+   },
+   "massKg": 2054,
+   "frontalAreaM2": 2.65
+  },
+  "chevrolet-bolt": {
+   "curb_kg": 1616,
+   "cd": 0.308,
+   "width_mm": 1765,
+   "height_mm": 1595,
+   "src": {
+    "curb": "gm_2020",
+    "cd": "evspecs",
+    "dims": "gm_2020"
+   },
+   "massKg": 1691,
+   "frontalAreaM2": 2.39
+  },
+  "kia-niro-ev-64": {
+   "curb_kg": 1748,
+   "cd": 0.29,
+   "width_mm": 1805,
+   "height_mm": 1570,
+   "src": {
+    "curb": "evspecs",
+    "cd": "evspecs",
+    "dims": "evspecs"
+   },
+   "massKg": 1823,
+   "frontalAreaM2": 2.41
+  },
+  "vw-id4-77": {
+   "curb_kg": 2049,
+   "cd": 0.28,
+   "width_mm": 1852,
+   "height_mm": 1631,
+   "src": {
+    "curb": "evspecs",
+    "cd": "vw_id4",
+    "dims": "evspecs"
+   },
+   "massKg": 2124,
+   "frontalAreaM2": 2.57
+  }
+ }
+}

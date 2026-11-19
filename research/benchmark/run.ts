@@ -6,11 +6,12 @@
 // Запуск: node --experimental-strip-types research/benchmark/run.ts [кількість поїздок] [seed] [bias]
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import {
-  type StationRecord, type DriverProfile, type TripPlan, type VehicleParams, type Connector,
+  type StationRecord, type DriverProfile, type TripPlan, type VehicleParams, type Connector, type Graph, type CorridorNode,
   DRIVER_PROFILES, VEHICLE_CATALOG, buildCorridorGraph, buildGraph, createRng, executePlan, generateTrips, haversineKm,
   type Adaptation, labelToPlan, safetyFromHistory, plan, planBaseline, replayHistory, segmentEnergyWh, withStateOfHealth, num, list,
-  UA_CITIES, type Wind, bearingDeg, headWindComponent, reliefEnergyWh,
+  UA_CITIES, type Wind, bearingDeg, headWindComponent, reliefEnergyWh, reliabilityScore, withDefaultParams,
 } from "../../lib/energy/src/index.ts";
+import { diverseStations } from "../sensitivity/diverse.ts";
 
 const N = Number(process.argv[2] ?? 400);
 const SEED = Number(process.argv[3] ?? 2026);
@@ -20,10 +21,17 @@ const BIAS = Number(process.argv[4] ?? 0);
 const TF = Number(process.env.TF ?? num("failurePenaltyH"));
 // світ з рельєфом і вітром із напрямком
 const UA = process.env.WORLD === "ua";
-const TAG = (UA ? "ua_" : "") + (BIAS ? `bias${Math.round(BIAS * 100)}_` : "") + (process.env.TF ? `tf${Math.round(TF * 100)}_` : "");
+// коридор пошуку станцій: як у застосунку (30 → 60 → 100 км, доки не знайдено план із запасом) або фіксований
+// перший крок (CORRIDOR=fixed, контрольний експеримент); політика однакова для всіх планувальників
+const FIXED = process.env.CORRIDOR === "fixed";
+const WIDTHS = FIXED ? [list("corridorStepsKm")[0]] : list("corridorStepsKm");
+const TAG = (FIXED ? "fixed_" : "") + (UA ? "ua_" : "") + (BIAS ? `bias${Math.round(BIAS * 100)}_` : "") + (process.env.TF ? `tf${Math.round(TF * 100)}_` : "");
 const here = new URL(".", import.meta.url).pathname;
-const stations: StationRecord[] = JSON.parse(readFileSync(`${here}../stations/data/ua_stations.json`, "utf8"));
 const NOW = new Date("2026-10-01T00:00:00Z");
+const snapshot: StationRecord[] = JSON.parse(readFileSync(`${here}../stations/data/ua_stations.json`, "utf8"));
+// STATIONS=diverse – стресовий реєстр для аналізу чутливості (research/sensitivity/diverse.ts)
+const stations = process.env.STATIONS === "diverse" ? diverseStations(snapshot, NOW) : snapshot;
+const stationById = new Map(stations.map((s) => [`s${s.id}`, s]));
 
 const CITIES: [string, number, number][] = [
   ["Київ", 50.4501, 30.5234], ["Львів", 49.8397, 24.0297], ["Одеса", 46.4825, 30.7233], ["Харків", 49.9935, 36.2304],
@@ -69,11 +77,18 @@ for (let trip = 0; trip < N; trip++) {
   const trueWind = vec(wx, wy), forecastWind = vec(wx + wRng.gauss(), wy + wRng.gauss());
   const elevA = UA ? cityElev.get(a[0]) ?? 0 : 0, elevB = UA ? cityElev.get(b[0]) ?? 0 : 0;
 
-  const { graph, nodes } = buildCorridorGraph({ id: "A", lat: a[1], lon: a[2], elevM: elevA }, { id: "B", lat: b[1], lon: b[2], elevM: elevB }, stations, {
-    // в експерименті коридор фіксований (30 км), а ребра обмежено 450 км – запасом ходу автомобілів парку
-    corridorKm: 30, circuity: CIRCUITY, maxEdgeKm: 450, highwayKmh: V_HW, connectors: model.connectors as Connector[],
-    vehicleMaxDcKw: model.maxDcKw, now: NOW });
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const placeA = { id: "A", lat: a[1], lon: a[2], elevM: elevA }, placeB = { id: "B", lat: b[1], lon: b[2], elevM: elevB };
+  type Corridor = { km: number; graph: Graph; nodes: CorridorNode[]; nodeMap: Map<string, CorridorNode> };
+  const corridors = new Map<number, Corridor>();
+  const corridor = (km: number): Corridor => {
+    if (!corridors.has(km)) {
+      // ребра обмежено 450 км – запасом ходу автомобілів парку
+      const { graph, nodes } = buildCorridorGraph(placeA, placeB, stations, { corridorKm: km, circuity: CIRCUITY, maxEdgeKm: 450,
+        highwayKmh: V_HW, connectors: model.connectors as Connector[], vehicleMaxDcKw: model.maxDcKw, now: NOW });
+      corridors.set(km, { km, graph, nodes, nodeMap: new Map(nodes.map((n) => [n.id, n])) });
+    }
+    return corridors.get(km)!;
+  };
 
   // персоналізація EVPredict: 30 попередніх поїздок цього водія
   const history = generateTrips(truthVehicle, driver, { count: 30, seed: SEED * 31 + 1000 + trip });
@@ -87,66 +102,99 @@ for (let trip = 0; trip < N; trip++) {
 
   const kRoad = replay.roadFactors;
   // conditions = true: планувальник знає прогноз вітру (для кожного ребра за його азимутом) і висоти вузлів
-  const physicsEdge = (k_: number | "road", conditions = false) => (e: { from: string; to: string; lengthKm: number; speedKmh: number }) => {
-    const u = nodeMap.get(e.from)!, v = nodeMap.get(e.to)!;
-    const dh = conditions ? v.elevM - u.elevM : 0;
-    return (segmentEnergyWh(knownVehicle, { lengthM: e.lengthKm * 1000, speedMs: e.speedKmh / 3.6, gradePct: 0, tempC: forecastTemp,
-      headWindMs: conditions ? headWindComponent(forecastWind, bearingDeg(u, v)) : undefined,
-      stopsPerKm: e.lengthKm > HW_KM ? num("edgeStopsHighway") : num("edgeStopsCity") }).energyWh
-      + (conditions ? reliefEnergyWh(knownVehicle, Math.max(dh, 0), Math.max(-dh, 0)) : 0))
-      * (k_ === "road" ? (e.lengthKm > HW_KM ? kRoad.highway : kRoad.city) : k_);
-  };
-  // якщо з повним запасом план не знайдено — повторна спроба без запасу (такий план позначається як ризикований)
-  const withFallback = (o: Parameters<typeof plan>[4], src = "A") => {
-    const r = plan(graph, src, "B", knownVehicle, o);
-    if (r.label) return { ...labelToPlan(r.label, r.expanded)!, risky: false };
-    const r2 = plan(graph, src, "B", knownVehicle, { ...o, safetyFactor: 1, minReliability: 0, stationArrivalReserve: 0, chargeTargets: [...o.chargeTargets, 1.0] });
-    return r2.label ? { ...labelToPlan(r2.label, r2.expanded)!, risky: true } : null;
-  };
+  const physicsEdge = (nodeMap: Map<string, CorridorNode>, k_: number | "road", conditions = false) =>
+    (e: { from: string; to: string; lengthKm: number; speedKmh: number }) => {
+      const u = nodeMap.get(e.from)!, v = nodeMap.get(e.to)!;
+      const dh = conditions ? v.elevM - u.elevM : 0;
+      return (segmentEnergyWh(knownVehicle, { lengthM: e.lengthKm * 1000, speedMs: e.speedKmh / 3.6, gradePct: 0, tempC: forecastTemp,
+        headWindMs: conditions ? headWindComponent(forecastWind, bearingDeg(u, v)) : undefined,
+        stopsPerKm: e.lengthKm > HW_KM ? num("edgeStopsHighway") : num("edgeStopsCity") }).energyWh
+        + (conditions ? reliefEnergyWh(knownVehicle, Math.max(dh, 0), Math.max(-dh, 0)) : 0))
+        * (k_ === "road" ? (e.lengthKm > HW_KM ? kRoad.highway : kRoad.city) : k_);
+    };
   const common = { tempC: forecastTemp, socStart: SOC_START, socMin: RESERVE, socArriveMin: RESERVE,
     chargeTargets: list("chargeTargets"), useHeuristic: true, vMaxKmh: num("heuristicSpeed") };
-  const options: Record<Exclude<PlannerId, "baseline" | "naive">, Parameters<typeof plan>[4]> = {
-    physics: { ...common, personalFactor: 1, edgeEnergy: physicsEdge(1) },
-    personal: { ...common, personalFactor: k, edgeEnergy: physicsEdge("road"), safetyFactor: safety },
-    full: { ...common, personalFactor: k, edgeEnergy: physicsEdge("road"), safetyFactor: safety, minReliability: num("minReliability"), failurePenaltyH: TF,
-      stationArrivalReserve: num("stationArrivalReserve") },
-    weather: { ...common, personalFactor: k, edgeEnergy: physicsEdge("road", true), safetyFactor: safety, minReliability: num("minReliability"), failurePenaltyH: TF,
-      stationArrivalReserve: num("stationArrivalReserve") },
+  type EvId = Exclude<PlannerId, "baseline" | "naive">;
+  const optionsFor = (id: EvId, c: Corridor): Parameters<typeof plan>[4] => ({
+    physics: { ...common, personalFactor: 1, edgeEnergy: physicsEdge(c.nodeMap, 1) },
+    personal: { ...common, personalFactor: k, edgeEnergy: physicsEdge(c.nodeMap, "road"), safetyFactor: safety },
+    full: { ...common, personalFactor: k, edgeEnergy: physicsEdge(c.nodeMap, "road"), safetyFactor: safety, minReliability: num("minReliability"),
+      failurePenaltyH: TF, stationArrivalReserve: num("stationArrivalReserve") },
+    weather: { ...common, personalFactor: k, edgeEnergy: physicsEdge(c.nodeMap, "road", true), safetyFactor: safety, minReliability: num("minReliability"),
+      failurePenaltyH: TF, stationArrivalReserve: num("stationArrivalReserve") },
+  })[id];
+  // план без запасу (ризикований) шукається лише в найширшому коридорі, як у застосунку
+  const fallback = (c: Corridor, o: Parameters<typeof plan>[4], src: string) => {
+    const r2 = plan(c.graph, src, "B", knownVehicle, { ...o, safetyFactor: 1, minReliability: 0, stationArrivalReserve: 0, chargeTargets: [...o.chargeTargets, 1.0] });
+    return r2.label ? { ...labelToPlan(r2.label, r2.expanded)!, risky: true } : null;
+  };
+  const withFallback = (c: Corridor, o: Parameters<typeof plan>[4], src = "A") => {
+    const r = plan(c.graph, src, "B", knownVehicle, o);
+    return r.label ? { ...labelToPlan(r.label, r.expanded)!, risky: false } : fallback(c, o, src);
   };
   const baselineOpts = { whPerKm: rated, socStart: SOC_START, socMin: RESERVE, chargeTo: num("baselineChargeTo") };
+  type Chosen = { pl: (TripPlan & { risky?: boolean }) | null; c: Corridor; ms: number };
+  // однакова політика коридору для всіх планувальників: найвужчий коридор, у якому знайдено план
+  const choose = (id: PlannerId): Chosen => {
+    const t0 = performance.now();
+    let last: Chosen | null = null;
+    for (const [i, km] of WIDTHS.entries()) {
+      const c = corridor(km);
+      if (id === "baseline") {
+        const pl = planBaseline(c.graph, "A", "B", model.params, baselineOpts);
+        last = { pl, c, ms: 0 };
+        if (pl) break;
+      } else if (id !== "naive") {
+        const o = optionsFor(id, c), r = plan(c.graph, "A", "B", knownVehicle, o);
+        if (r.label) { last = { pl: { ...labelToPlan(r.label, r.expanded)!, risky: false }, c, ms: 0 }; break; }
+        last = { pl: i === WIDTHS.length - 1 ? fallback(c, o, "A") : null, c, ms: 0 };
+      }
+    }
+    return { ...last!, ms: performance.now() - t0 };
+  };
   // наївний варіант без енергетичних обмежень: найшвидший шлях A → B без зарядних зупинок
   const directKm = d * CIRCUITY;
-  const naiveGraph = buildGraph([nodes[0], nodes[1]], [{ from: "A", to: "B", lengthKm: directKm, speedKmh: V_HW }], true);
-  const plans: Record<PlannerId, (TripPlan & { risky?: boolean }) | null> = {
-    naive: { steps: [{ node: "A" }, { node: "B" }], plannedTimeH: directKm / V_HW, plannedArriveSoc: SOC_START - (directKm * rated) / (model.params.usableKWh * 1000), expanded: 0 },
-    baseline: planBaseline(graph, "A", "B", model.params, baselineOpts),
-    physics: withFallback(options.physics), personal: withFallback(options.personal), full: withFallback(options.full),
-    weather: UA ? withFallback(options.weather) : null,
+  const first = corridor(WIDTHS[0]);
+  const naiveGraph = buildGraph([first.nodes[0], first.nodes[1]], [{ from: "A", to: "B", lengthKm: directKm, speedKmh: V_HW }], true);
+  const chosen = {} as Record<PlannerId, Chosen>;
+  for (const id of PLANNERS) chosen[id] = id === "naive"
+    ? { pl: { steps: [{ node: "A" }, { node: "B" }], plannedTimeH: directKm / V_HW, plannedArriveSoc: SOC_START - (directKm * rated) / (model.params.usableKWh * 1000), expanded: 0 }, c: first, ms: 0 }
+    : choose(id);
+  // перепланування в тому самому коридорі: якщо станція не працює — усі планувальники; за відхиленням SoC — лише повна версія EVPredict
+  const adaptFor = (id: PlannerId): Adaptation | undefined => {
+    const c = chosen[id].c;
+    return id === "naive" ? undefined : id === "baseline"
+      ? { replan: (from, soc, exclude) => planBaseline(c.graph, from, "B", model.params, { ...baselineOpts, socStart: soc, exclude }) }
+      : { replan: (from, soc, exclude) => withFallback(c, { ...optionsFor(id, c), socStart: soc, exclude }, from),
+          deviation: id === "full" || id === "weather" ? num("replanDeviation") : undefined };
   };
-  // перепланування: якщо станція не працює — усі планувальники; за відхиленням SoC — лише повна версія EVPredict
-  const adaptFor = (id: PlannerId): Adaptation | undefined => id === "naive" ? undefined : id === "baseline"
-    ? { replan: (from, soc, exclude) => planBaseline(graph, from, "B", model.params, { ...baselineOpts, socStart: soc, exclude }) }
-    : { replan: (from, soc, exclude) => withFallback({ ...options[id], socStart: soc, exclude }, from),
-        deviation: id === "full" || id === "weather" ? num("replanDeviation") : undefined };
 
   for (const scenario of ["informative", "random"] as const) {
-    // справжній стан станцій на цю поїздку (однаковий для всіх планувальників)
-    const sRng = createRng(SEED * 7 + 5000 + trip * 2 + (scenario === "random" ? 1 : 0));
-    const works = new Map<string, boolean>();
-    for (const n of nodes) if (n.chargerKW) {
-      const p = scenario === "informative" ? Math.min(0.98, (n.reliability ?? 0.8) * 0.95) : 0.8;
-      works.set(n.id, sRng.next() < p);
-    }
+    // справжній стан станцій на цю поїздку: однаковий для всіх планувальників і всіх ширин коридору (окремий
+    // генератор для кожної станції); імовірність роботи – з індексу за параметрами реєстру за замовчуванням,
+    // тож аналіз чутливості (PARAM_OVERRIDES) змінює лише знання планувальника, а не сам світ
+    const worksCache = new Map<string, boolean>();
+    const stationWorks = (nid: string) => {
+      if (!worksCache.has(nid)) {
+        const st = stationById.get(nid);
+        if (!st) { worksCache.set(nid, false); return false; }
+        const r = createRng(((SEED * 7 + 5000 + trip * 2 + (scenario === "random" ? 1 : 0)) ^ Math.imul(st.id, 0x9e3779b1)) >>> 0);
+        const rel = withDefaultParams(() => reliabilityScore(st, NOW).score);
+        worksCache.set(nid, r.next() < (scenario === "informative" ? Math.min(0.98, rel * 0.95) : 0.8));
+      }
+      return worksCache.get(nid)!;
+    };
     for (const id of PLANNERS) {
-      const pl = plans[id];
+      const { pl, c, ms } = chosen[id];
       const nRng = createRng(SEED * 13 + 9000 + trip);                // однаковий шум для всіх планувальників
-      if (!pl) { rows.push({ trip, scenario, planner: id, planFound: false }); continue; }
-      const res = executePlan(pl, id === "naive" ? naiveGraph : graph, nodeMap, {
+      if (!pl) { rows.push({ trip, scenario, planner: id, planFound: false, corridorKm: null, planMs: ms }); continue; }
+      const res = executePlan(pl, id === "naive" ? naiveGraph : c.graph, c.nodeMap, {
         vehicle: truthVehicle, driver, tempC, headWindMs, circuity: CIRCUITY, ...(UA ? { wind: trueWind, relief: true } : {}),
-        edgeNoise: () => (1 + BIAS) * (1 + 0.04 * nRng.gauss()), stationWorks: (nid) => works.get(nid) ?? false,
+        edgeNoise: () => (1 + BIAS) * (1 + 0.04 * nRng.gauss()), stationWorks,
       }, SOC_START, RESERVE, adaptFor(id));
       rows.push({ trip, scenario, planner: id, planFound: true, from: a[0], to: b[0], km: d * CIRCUITY, vehicle: model.id, driver: driver.id,
-        tempC: +tempC.toFixed(1), stations: nodes.length - 2, k: +k.toFixed(3), safety: +safety.toFixed(3),
+        tempC: +tempC.toFixed(1), stations: c.nodes.length - 2, corridorKm: id === "naive" ? null : c.km, planMs: +ms.toFixed(2),
+        k: +k.toFixed(3), safety: +safety.toFixed(3),
         risky: pl.risky ?? false, kHighway: +kRoad.highway.toFixed(3), plannedStops: pl.steps.filter((s) => s.chargeTo !== undefined).length, plannedTimeH: pl.plannedTimeH, plannedArriveSoc: pl.plannedArriveSoc,
         expanded: pl.expanded, ...res, arrivalErrorPp: res.completed ? (res.arriveSoc - pl.plannedArriveSoc) * 100 : null });
     }
@@ -178,7 +226,11 @@ for (const scenario of ["informative", "random"]) for (const planner of PLANNERS
     meanAbsArrivalErrPp: mean(ok.map((r) => Math.abs(r.arrivalErrorPp as number))),
     meanStops: mean(found.map((r) => r.chargeStops as number)),
     failedStationsPerTrip: mean(found.map((r) => r.failedStations as number)),
-    replansPerTrip: mean(found.map((r) => r.replans as number)) });
+    replansPerTrip: mean(found.map((r) => r.replans as number)),
+    // ширина коридору, в якому знайдено план, і час пошуку (без побудови графа – однаковий для всіх)
+    ...Object.fromEntries(WIDTHS.map((w) => [`foundAt${w}kmPct`, (100 * found.filter((r) => r.corridorKm === w).length) / rs.length])),
+    noPlanPct: (100 * (rs.length - found.length)) / rs.length,
+    meanPlanMs: mean(rs.map((r) => (r.planMs as number) ?? 0)) });
 }
 writeFileSync(`${OUT}/summary_${TAG}seed${SEED}.json`, JSON.stringify(summary, null, 2));
 console.table(summary.map((s) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, typeof v === "number" ? +v.toFixed(2) : v]))));

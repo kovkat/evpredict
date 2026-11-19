@@ -1,0 +1,8 @@
+{
+ "source": "Open Charge Map, Ukraine snapshot (research/stations/data/ua_stations.json)",
+ "dc_stations": 524,
+ "with_power": 524,
+ "median_kw": 120.0,
+ "q25_kw": 80.0,
+ "q75_kw": 160.0
+}

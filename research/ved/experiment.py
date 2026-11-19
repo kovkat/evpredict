@@ -29,8 +29,15 @@ t = trips[(~trips.engine_on) & (trips.dist_km > 1) & (trips.energy_kwh > 0.05) &
 t = t.sort_values(["veh", "day"]).reset_index(drop=True)
 
 # ---------- фізична модель (та сама, що lib/energy/src/physics.ts) ----------
+# значення ККД, опору коченню і допоміжних навантажень – з реєстру lib/energy/src/params.ts;
+# VED не містить C_d і площі міделя, тому взято типові значення компактного автомобіля,
+# систематичне відхилення для конкретного авто поглинає персональний коефіцієнт k
 G, T_COMFORT = 9.81, 21.0
-P = dict(cd=0.30, area=2.3, crr=0.0095, eff=0.88, regen=0.6, aux_w=300.0, hvac_w_per_deg=60.0)
+P = dict(cd=0.30, area=2.3, crr=0.0095, eff=0.84, regen=0.75, aux_w=185.0, hvac_w_per_deg=87.0)
+# розгони в потоці між повними зупинками: позитивна кінетична енергія міського циклу WLTP понад ту,
+# що дають його повні зупинки, м²/с² на 1 км (research/params/wltc.py); у VED повні зупинки виміряні
+_city = json.load(open(os.path.join(HERE, "..", "params", "results", "wltc.json")))["phases"]["city"]
+FLUCT = _city["pke_m_s2"] * 1000 - _city["full_stops_per_km"] * (_city["moving_speed_kmh"] / 3.6) ** 2
 
 def physics_kwh(row) -> float:
     mass = row.Generalized_Weight * 0.4536 + 80            # фунти → кг, + водій
@@ -39,7 +46,7 @@ def physics_kwh(row) -> float:
     rho = 101325 / (287.05 * (row.oat + 273.15))
     f = P["crr"] * mass * G + 0.5 * rho * P["cd"] * P["area"] * v * v
     e = f * L / P["eff"]
-    stops = row.stops_per_km * row.dist_km
+    stops = (row.stops_per_km + FLUCT / (v * v)) * row.dist_km
     kin = 0.5 * mass * v * v
     e += stops * (kin / P["eff"] - kin * P["regen"])
     aux = P["aux_w"] + P["hvac_w_per_deg"] * abs(row.oat - T_COMFORT)
@@ -88,18 +95,23 @@ def metrics(p, sel=slice(None)):
 NAMES = {"B0": "Постійне споживання (база Дейкстри)", "B1": "Фізична модель", "M1": "Фізична + персоналізація k",
          "M2": "XGBoost на ознаках", "M3": "Гібрид: фізична + XGBoost", "M4": "Гібрид + персоналізація k"}
 rank = t.groupby("veh").cumcount().to_numpy()
+# тестові автомобілі – ті самі, що в research/calibration/ved_check.py: серед авто з ≥ 10 поїздками,
+# упорядкованих за id, непарні позиції; у виборі жодного параметра вони не брали участі
+_eligible = sorted(v for v, n in t.groupby("veh").size().items() if n >= 10)
+test_mask = t.veh.isin(_eligible[1::2]).to_numpy()
 rows = []
 for m, p in preds.items():
     long = t.dist_km.to_numpy() >= 10
     r = {"model": m, "name": NAMES[m], **metrics(p), **{f"{k}_after10": v for k, v in metrics(p, rank >= 10).items()},
-         **{f"{k}_long": v for k, v in metrics(p, long).items()}}
+         **{f"{k}_long": v for k, v in metrics(p, long).items()}, **{f"{k}_test": v for k, v in metrics(p, test_mask).items()}}
     rows.append(r)
 res = pd.DataFrame(rows)
 res.to_csv(os.path.join(OUT, "metrics.csv"), index=False)
 summary = dict(trips=int(len(t)), vehicles=int(t.veh.nunique()), ev_trips=int((t.EngineType == "EV").sum()),
                whkm_median=float((t.energy_kwh / t.dist_km * 1000).median()),
                dist_km_median=float(t.dist_km.median()), oat_min=float(t.oat.min()), oat_max=float(t.oat.max()),
-               trips_after10=int((rank >= 10).sum()), trips_long=int((t.dist_km >= 10).sum()))
+               trips_after10=int((rank >= 10).sum()), trips_long=int((t.dist_km >= 10).sum()),
+               test_vehicles=len(_eligible[1::2]), trips_test=int(test_mask.sum()))
 json.dump(summary, open(os.path.join(OUT, "summary.json"), "w"), ensure_ascii=False, indent=2)
 print(json.dumps(summary, ensure_ascii=False))
 print(res.round(3).to_string(index=False))
@@ -156,6 +168,7 @@ for a_, b_ in [("M1", "B0"), ("M1", "B1"), ("M4", "M1")]:
         pick = rng.choice(uv, size=len(uv), replace=True)
         boots.append(np.concatenate([d[vehs == v] for v in pick]).mean())
     tests[f"{a_}_vs_{b_}"] = dict(mae_diff_kwh=float(d.mean()), ci95=[float(np.percentile(boots, 2.5)), float(np.percentile(boots, 97.5))],
-                                  wilcoxon_p=float(wilcoxon(d).pvalue), share_better=float((d < 0).mean()))
+                                  wilcoxon_p=float(wilcoxon(d).pvalue), share_better=float((d < 0).mean()),
+                                  test_vehicles_mae_diff_kwh=float(d[test_mask].mean()), test_vehicles_wilcoxon_p=float(wilcoxon(d[test_mask]).pvalue))
 json.dump(tests, open(os.path.join(OUT, "tests.json"), "w"), indent=2)
 print(json.dumps(tests, indent=1))

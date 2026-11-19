@@ -1,0 +1,22 @@
+{
+ "source": "OSRM demo server (router.project-osrm.org), table service, profile driving; road network OpenStreetMap (ODbL)",
+ "retrieved": "2026-11-18",
+ "all_pairs": {
+  "n": 462,
+  "median": 1.255,
+  "q25": 1.177,
+  "q75": 1.309
+ },
+ "pairs_120_480km": {
+  "n": 276,
+  "median": 1.261,
+  "q25": 1.175,
+  "q75": 1.321
+ },
+ "osrm_speed_kmh": {
+  "n": 462,
+  "median": 65.103,
+  "q25": 61.256,
+  "q75": 70.029
+ }
+}

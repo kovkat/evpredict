@@ -48,7 +48,7 @@ Thumbs.db
 .cache/
 .local/
 .data/
-e2e/shots/
+**/e2e/shots/
 
 # Local environment variables / API keys
 .env
@@ -58,3 +58,5 @@ e2e/shots/
 # скрипт першої публікації
 publish.sh
 
+research/sensitivity/runs/
+research/sensitivity/runs_diverse/

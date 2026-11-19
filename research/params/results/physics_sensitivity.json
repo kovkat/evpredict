@@ -1,0 +1,326 @@
+[
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "rollingResistance",
+  "range": [
+   0.0072,
+   0.0106
+  ],
+  "source": "класи B–E за Регламентом (ЄС) 2020/740 (середина B, нижня межа E)",
+  "baseKWh": 2.63,
+  "loPct": -6.9,
+  "hiPct": 3.3
+ },
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "drivetrainEff",
+  "range": [
+   0.8,
+   0.88
+  ],
+  "source": "±5 % від 0,84",
+  "baseKWh": 2.63,
+  "loPct": 4.9,
+  "hiPct": -4.5
+ },
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "regenEff",
+  "range": [
+   0.6,
+   0.83
+  ],
+  "source": "0,6 – попереднє значення; 0,83 – без втрат на тертя (0,92 · 0,91 · 1)",
+  "baseKWh": 2.63,
+  "loPct": 7.8,
+  "hiPct": -4.2
+ },
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "auxBasePower",
+  "range": [
+   144,
+   226
+  ],
+  "source": "два BEV у звіті DOE",
+  "baseKWh": 2.63,
+  "loPct": -0.7,
+  "hiPct": 0.7
+ },
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "hvacPerDegree",
+  "range": [
+   79,
+   96
+  ],
+  "source": "нахили двох BEV окремо (hvac_fit.py)",
+  "baseKWh": 2.63,
+  "loPct": -3.5,
+  "hiPct": 3.9
+ },
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "comfortTemp",
+  "range": [
+   20,
+   22.2
+  ],
+  "source": "20 °C; 22,2 °C – уставка в тестах DOE",
+  "baseKWh": 2.63,
+  "loPct": -1.5,
+  "hiPct": 1.8
+ },
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "citySpeed",
+  "range": [
+   25.3,
+   44.5
+  ],
+  "source": "фази Low і Medium WLTC окремо",
+  "baseKWh": 2.63,
+  "loPct": 0.6,
+  "hiPct": 11.9
+ },
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "cityStops",
+  "range": [
+   0.21,
+   1.62
+  ],
+  "source": "фази Medium і Low WLTC окремо",
+  "baseKWh": 2.63,
+  "loPct": -21.9,
+  "hiPct": -14.7
+ },
+ {
+  "trip": "місто, −5 °C, 15 км",
+  "param": "suburbanSpeed",
+  "range": [
+   44.5,
+   94
+  ],
+  "source": "фази Medium і Extra-high WLTC",
+  "baseKWh": 2.63,
+  "loPct": 0,
+  "hiPct": 0
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "rollingResistance",
+  "range": [
+   0.0072,
+   0.0106
+  ],
+  "source": "класи B–E за Регламентом (ЄС) 2020/740 (середина B, нижня межа E)",
+  "baseKWh": 23.77,
+  "loPct": -6.1,
+  "hiPct": 2.9
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "drivetrainEff",
+  "range": [
+   0.8,
+   0.88
+  ],
+  "source": "±5 % від 0,84",
+  "baseKWh": 23.77,
+  "loPct": 6,
+  "hiPct": -5.4
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "regenEff",
+  "range": [
+   0.6,
+   0.83
+  ],
+  "source": "0,6 – попереднє значення; 0,83 – без втрат на тертя (0,92 · 0,91 · 1)",
+  "baseKWh": 23.77,
+  "loPct": 4.4,
+  "hiPct": -2.4
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "auxBasePower",
+  "range": [
+   144,
+   226
+  ],
+  "source": "два BEV у звіті DOE",
+  "baseKWh": 23.77,
+  "loPct": -0.2,
+  "hiPct": 0.2
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "hvacPerDegree",
+  "range": [
+   79,
+   96
+  ],
+  "source": "нахили двох BEV окремо (hvac_fit.py)",
+  "baseKWh": 23.77,
+  "loPct": -0.2,
+  "hiPct": 0.2
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "comfortTemp",
+  "range": [
+   20,
+   22.2
+  ],
+  "source": "20 °C; 22,2 °C – уставка в тестах DOE",
+  "baseKWh": 23.77,
+  "loPct": 0.2,
+  "hiPct": -0.3
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "citySpeed",
+  "range": [
+   25.3,
+   44.5
+  ],
+  "source": "фази Low і Medium WLTC окремо",
+  "baseKWh": 23.77,
+  "loPct": -0.4,
+  "hiPct": 0.7
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "cityStops",
+  "range": [
+   0.21,
+   1.62
+  ],
+  "source": "фази Medium і Low WLTC окремо",
+  "baseKWh": 23.77,
+  "loPct": -0.8,
+  "hiPct": -0.5
+ },
+ {
+  "trip": "траса, 25 °C, 120 км",
+  "param": "suburbanSpeed",
+  "range": [
+   44.5,
+   94
+  ],
+  "source": "фази Medium і Extra-high WLTC",
+  "baseKWh": 23.77,
+  "loPct": 0,
+  "hiPct": 0
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "rollingResistance",
+  "range": [
+   0.0072,
+   0.0106
+  ],
+  "source": "класи B–E за Регламентом (ЄС) 2020/740 (середина B, нижня межа E)",
+  "baseKWh": 6.2,
+  "loPct": -7.9,
+  "hiPct": 3.8
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "drivetrainEff",
+  "range": [
+   0.8,
+   0.88
+  ],
+  "source": "±5 % від 0,84",
+  "baseKWh": 6.2,
+  "loPct": 6,
+  "hiPct": -5.4
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "regenEff",
+  "range": [
+   0.6,
+   0.83
+  ],
+  "source": "0,6 – попереднє значення; 0,83 – без втрат на тертя (0,92 · 0,91 · 1)",
+  "baseKWh": 6.2,
+  "loPct": 6.5,
+  "hiPct": -3.5
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "auxBasePower",
+  "range": [
+   144,
+   226
+  ],
+  "source": "два BEV у звіті DOE",
+  "baseKWh": 6.2,
+  "loPct": -0.5,
+  "hiPct": 0.5
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "hvacPerDegree",
+  "range": [
+   79,
+   96
+  ],
+  "source": "нахили двох BEV окремо (hvac_fit.py)",
+  "baseKWh": 6.2,
+  "loPct": -1,
+  "hiPct": 1.1
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "comfortTemp",
+  "range": [
+   20,
+   22.2
+  ],
+  "source": "20 °C; 22,2 °C – уставка в тестах DOE",
+  "baseKWh": 6.2,
+  "loPct": -1.1,
+  "hiPct": 1.4
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "citySpeed",
+  "range": [
+   25.3,
+   44.5
+  ],
+  "source": "фази Low і Medium WLTC окремо",
+  "baseKWh": 6.2,
+  "loPct": -1.9,
+  "hiPct": 4.8
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "cityStops",
+  "range": [
+   0.21,
+   1.62
+  ],
+  "source": "фази Medium і Low WLTC окремо",
+  "baseKWh": 6.2,
+  "loPct": -6.2,
+  "hiPct": -4.2
+ },
+ {
+  "trip": "змішана, 10 °C, 40 км",
+  "param": "suburbanSpeed",
+  "range": [
+   44.5,
+   94
+  ],
+  "source": "фази Medium і Extra-high WLTC",
+  "baseKWh": 6.2,
+  "loPct": -7.7,
+  "hiPct": 27.1
+ }
+]

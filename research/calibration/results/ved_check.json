@@ -1,0 +1,91 @@
+{
+ "split": "sorted vehicle ids: even -> validation, odd -> test",
+ "validation": {
+  "vehicles": 10,
+  "trips": 1009
+ },
+ "test": {
+  "vehicles": 9,
+  "trips": 1269
+ },
+ "alpha": {
+  "near_optimal_on_synthetic": [
+   0.2,
+   0.25,
+   0.3,
+   0.4
+  ],
+  "validation_mapePct": {
+   "0.2": 21.37,
+   "0.25": 21.573,
+   "0.3": 21.798,
+   "0.4": 22.36
+  },
+  "chosen": 0.2,
+  "test_mapePct": {
+   "0.2": 25.777,
+   "0.25": 26.016,
+   "0.3": 26.301,
+   "0.4": 26.966
+  }
+ },
+ "ratioClip": [
+  {
+   "clip": [
+    0.8,
+    1.25
+   ],
+   "mapePct": 26.009
+  },
+  {
+   "clip": [
+    0.67,
+    1.5
+   ],
+   "mapePct": 25.764
+  },
+  {
+   "clip": [
+    0.5,
+    2.0
+   ],
+   "mapePct": 25.777
+  },
+  {
+   "clip": [
+    0.33,
+    3.0
+   ],
+   "mapePct": 25.748
+  },
+  {
+   "clip": [
+    0.01,
+    100.0
+   ],
+   "mapePct": 25.731
+  }
+ ],
+ "ratio": {
+  "q005": 0.292,
+  "q10": 0.636,
+  "q90": 1.478,
+  "q995": 2.068,
+  "inside_0.5_2_pct": 95.11
+ },
+ "default_interval": {
+  "interval": [
+   0.823,
+   1.318
+  ],
+  "coveragePct": 53.3,
+  "sigma0_coveredPct": 81.3
+ },
+ "history_interval": {
+  "alpha": 0.2,
+  "n": 1224,
+  "coveragePct": 83.2,
+  "sigma_coveredPct": 92.0,
+  "sigma_at_cap_pct": 46.3
+ }
+}

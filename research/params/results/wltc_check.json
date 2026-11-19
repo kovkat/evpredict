@@ -1,0 +1,65 @@
+{
+ "vehicles": 8,
+ "rows": [
+  {
+   "phase": "city",
+   "tempC": 23,
+   "fullStopsErrPct": -29.4,
+   "pkeErrPct": 0.8,
+   "pkeErrRangePct": [
+    -1,
+    2.7
+   ]
+  },
+  {
+   "phase": "city",
+   "tempC": -5,
+   "fullStopsErrPct": -25.6,
+   "pkeErrPct": -7.4,
+   "pkeErrRangePct": [
+    -9.1,
+    -5.6
+   ]
+  },
+  {
+   "phase": "high",
+   "tempC": 23,
+   "fullStopsErrPct": -23.9,
+   "pkeErrPct": -5.5,
+   "pkeErrRangePct": [
+    -7.7,
+    -2.9
+   ]
+  },
+  {
+   "phase": "high",
+   "tempC": -5,
+   "fullStopsErrPct": -20.5,
+   "pkeErrPct": -6.6,
+   "pkeErrRangePct": [
+    -8.2,
+    -4.4
+   ]
+  },
+  {
+   "phase": "extra_high",
+   "tempC": 23,
+   "fullStopsErrPct": -16.7,
+   "pkeErrPct": -7,
+   "pkeErrRangePct": [
+    -8.8,
+    -4.8
+   ]
+  },
+  {
+   "phase": "extra_high",
+   "tempC": -5,
+   "fullStopsErrPct": -15.5,
+   "pkeErrPct": -7.3,
+   "pkeErrRangePct": [
+    -8.8,
+    -5.3
+   ]
+  }
+ ]
+}
