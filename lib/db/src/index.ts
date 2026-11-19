@@ -28,6 +28,8 @@ export async function openDatabase(opts: { migrationsFolder: string; url?: strin
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle: drizzleLite } = await import("drizzle-orm/pglite");
   const { migrate: migrateLite } = await import("drizzle-orm/pglite/migrator");
+  // PGlite створює лише останній каталог шляху, тому батьківські створюємо самі (свіжий клон без .data)
+  if (dir !== "memory") (await import("node:fs")).mkdirSync(dir, { recursive: true });
   const client = dir === "memory" ? new PGlite() : new PGlite(dir);
   const lite = drizzleLite(client, { schema });
   await migrateLite(lite, { migrationsFolder: opts.migrationsFolder });

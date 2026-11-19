@@ -1,5 +1,5 @@
 // Схема бази даних EVPredict (PostgreSQL). Довідник моделей автомобілів зберігається в коді (lib/energy/src/vehicles.ts),
-// тут – облікові записи і сеанси, автомобілі користувачів, історія поїздок, персональні моделі, знімок станцій і збережені плани маршрутів.
+// тут – облікові записи і сеанси, автомобілі користувачів, історія поїздок, персональні моделі, знімок станцій, власні точки заряду і збережені плани маршрутів.
 import { pgTable, serial, integer, text, real, boolean, timestamp, jsonb, index, uniqueIndex, pgEnum } from "drizzle-orm/pg-core";
 
 export const tripSource = pgEnum("trip_source", ["manual", "csv", "simulator", "dataset", "bluetooth-obd"]);
@@ -83,6 +83,18 @@ export const stations = pgTable("stations", {
   reliabilityIndex: real("reliability_index").notNull(),
   snapshotDate: timestamp("snapshot_date", { withTimezone: true }).notNull(),
 }, (t) => [uniqueIndex("stations_ocm_uq").on(t.ocmId, t.snapshotDate), index("stations_geo_idx").on(t.lat, t.lon)]);
+
+// Власна точка заряду користувача (дім, знайома розетка, станція, якої немає у відкритому реєстрі)
+export const ownStations = pgTable("own_stations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  lat: real("lat").notNull(),
+  lon: real("lon").notNull(),
+  maxKw: real("max_kw").notNull(),
+  dc: boolean("dc").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [index("own_stations_user_idx").on(t.userId)]);
 
 // Збережений план поїздки між містами (запропонований або базовий)
 export const routePlans = pgTable("route_plans", {
