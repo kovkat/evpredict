@@ -61,7 +61,7 @@ export function explainShapley(p: VehicleParams, t: TripInput, k: number): Expla
 }
 
 const NAMES: Record<"uk" | "en", Record<Factor, string>> = {
-  uk: { speed: "швидкість", weather: "погода (температура, вітер)", relief: "рельєф", stops: "розгони після зупинок", personal: "ваш стиль водіння" },
+  uk: { speed: "швидкість", weather: "погода (температура, вітер)", relief: "рельєф", stops: "розгони і гальмування", personal: "ваш стиль водіння" },
   en: { speed: "Speed", weather: "Weather (temperature, wind)", relief: "Elevation", stops: "Stop-and-go", personal: "Your driving style" },
 };
 export const factorName = (f: Factor, lang: "uk" | "en" = "en") => NAMES[lang][f];

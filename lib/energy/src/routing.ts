@@ -1,9 +1,9 @@
 // Енергоорієнтована маршрутизація з обмеженням ресурсу (заряду батареї) — RCSPP, label-setting + A*,
 // а також базовий планувальник (Дейкстра з постійним споживанням) для порівняння.
 import { type VehicleParams, segmentEnergyWh } from "./physics.ts";
-import { num } from "./params.ts";
+import { list, num } from "./params.ts";
 
-export interface RouteNode { id: string; x: number; y: number; elevM: number; chargerKW?: number; reliability?: number; }
+export interface RouteNode { id: string; x: number; y: number; elevM: number; chargerKW?: number; reliability?: number; ac?: boolean; }
 export interface RouteEdge { from: string; to: string; lengthKm: number; speedKmh: number; }
 export interface Graph { nodes: Map<string, RouteNode>; adj: Map<string, RouteEdge[]>; }
 
@@ -48,17 +48,33 @@ export function buildGraph(nodes: RouteNode[], edges: RouteEdge[], directed = fa
 export function edgeEnergyWh(g: Graph, e: RouteEdge, p: VehicleParams, tempC: number, k: number) {
   const a = g.nodes.get(e.from)!, b = g.nodes.get(e.to)!;
   const gradePct = ((b.elevM - a.elevM) / (e.lengthKm * 1000)) * 100;
-  const r = segmentEnergyWh(p, { lengthM: e.lengthKm * 1000, speedMs: e.speedKmh / 3.6, gradePct, tempC });
+  const stopsPerKm = e.lengthKm > num("highwayEdgeMinKm") ? num("edgeStopsHighway") : num("edgeStopsCity");
+  const r = segmentEnergyWh(p, { lengthM: e.lengthKm * 1000, speedMs: e.speedKmh / 3.6, gradePct, tempC, stopsPerKm });
   return r.energyWh * k;
 }
 
-/** Час заряджання (год) від socA до socB зі зниженням потужності після 80 % */
-export function chargeTimeH(p: VehicleParams, stationKW: number, socA: number, socB: number) {
-  const step = num("chargeStep"), knee = num("chargeKnee"), taper = num("chargeTaper"); let t = 0;
-  for (let s = socA; s < socB - 1e-9; s += step) {
-    const kw = s < knee ? stationKW : stationKW * taper;
-    t += (p.usableKWh * step) / kw;
+/** Лінійна інтерполяція кусково-лінійної функції, заданої точками [x, y] */
+function interp(pts: readonly (readonly [number, number])[], x: number) {
+  if (x <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    if (x <= x1) return x1 > x0 ? y0 + ((y1 - y0) * (x - x0)) / (x1 - x0) : y1;
   }
+  return pts[pts.length - 1][1];
+}
+
+/** DC-потужність (кВт) при рівні заряду soc: менша з потужності станції і кривої автомобіля */
+export function dcPowerKw(p: VehicleParams, stationKW: number, soc: number) {
+  if (p.dcCurve?.length) return Math.min(stationKW, interp(p.dcCurve, soc * 100));
+  const f = list("chargeCurveGeneric"), stepPct = 100 / (f.length - 1);
+  return stationKW * interp(f.map((y, i) => [i * stepPct, y] as const), soc * 100);
+}
+
+/** Час заряджання (год) від socA до socB: DC – за кривою потужності; AC (власна точка) – стала потужність,
+ *  обмежена бортовим зарядним пристроєм (stationKW уже враховує це обмеження; втрати перетворення не враховуються) */
+export function chargeTimeH(p: VehicleParams, stationKW: number, socA: number, socB: number, ac = false) {
+  const step = num("chargeStep"); let t = 0;
+  for (let s = socA; s < socB - 1e-9; s += step) t += (p.usableKWh * step) / (ac ? stationKW : dcPowerKw(p, stationKW, s + step / 2));
   return t + 1 / 60 * num("connectMinutes"); // під'єднання й оплата
 }
 
@@ -129,7 +145,7 @@ export function plan(g: Graph, src: string, dst: string, p: VehicleParams, o: Pl
     if (node.chargerKW && (node.reliability ?? 1) >= (o.minReliability ?? 0) && !o.exclude?.has(cur.node)) {
       const risk = (1 - (node.reliability ?? 1)) * (o.failurePenaltyH ?? 0);
       for (const tgt of o.chargeTargets) if (tgt > cur.soc + minInc) {
-        const dt = chargeTimeH(p, node.chargerKW, cur.soc, tgt);
+        const dt = chargeTimeH(p, node.chargerKW, cur.soc, tgt, node.ac);
         pushLabel({ node: cur.node, timeH: cur.timeH + dt + risk, soc: tgt, energyWh: cur.energyWh, prev: cur, chargeTo: tgt,
           action: `заряджання ${Math.round(cur.soc * 100)}→${Math.round(tgt * 100)} % (${Math.round(dt * 60)} хв)` });
       }
@@ -203,7 +219,7 @@ export function planBaseline(g: Graph, src: string, dst: string, p: VehicleParam
       const v = g.nodes.get(e.to)!;
       const isStop = e.to !== dst;
       if (isStop && (!v.chargerKW || o.exclude?.has(e.to))) continue;
-      const charge = isStop ? chargeTimeH(p, v.chargerKW!, Math.min(socArrive, o.chargeTo), o.chargeTo) : 0;
+      const charge = isStop ? chargeTimeH(p, v.chargerKW!, Math.min(socArrive, o.chargeTo), o.chargeTo, v.ac) : 0;
       const nd = d + e.lengthKm / e.speedKmh + charge;
       if (nd < (dist.get(e.to) ?? Infinity)) { dist.set(e.to, nd); prev.set(e.to, u); heap.push([e.to, nd]); }
     }

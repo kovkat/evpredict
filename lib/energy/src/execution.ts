@@ -7,7 +7,12 @@ import type { DriverProfile } from "./simulator.ts";
 import { type Graph, type RouteEdge, type TripPlan, chargeTimeH } from "./routing.ts";
 import { type CorridorNode, type Wind, bearingDeg, haversineKm, headWindComponent } from "./stations.ts";
 import { reliefEnergyWh } from "./trip.ts";
-import { num } from "./params.ts";
+import { num, withDefaultParams } from "./params.ts";
+
+// «Справжній» світ симулятора бере дорожні параметри з реєстру за замовчуванням, щоб аналіз
+// чутливості (PARAM_OVERRIDES) змінював лише знання планувальника, а не сам світ
+const WORLD = withDefaultParams(() => ({ hwKm: num("highwayEdgeMinKm"), stopsHw: num("edgeStopsHighway"),
+  stopsCity: num("edgeStopsCity"), cityKmh: num("edgeSpeedCity") }));
 
 export interface WorldTruth {
   vehicle: VehicleParams;              // справжні параметри (з урахуванням фактичного SoH)
@@ -45,7 +50,7 @@ export function trueEdgeWh(w: WorldTruth, e: Pick<RouteEdge, "lengthKm" | "speed
   ends?: { from: { lat: number; lon: number; elevM: number }; to: { lat: number; lon: number; elevM: number } }) {
   const p = { ...w.vehicle, hvacWPerDeg: w.vehicle.hvacWPerDeg * w.driver.hvacFactor };
   const v = e.speedKmh * w.driver.speedFactor;
-  const stops = (e.lengthKm > 25 ? 0.05 : 1) * w.driver.stopsFactor;
+  const stops = (e.lengthKm > WORLD.hwKm ? WORLD.stopsHw : WORLD.stopsCity) * w.driver.stopsFactor;
   const headWindMs = w.wind && ends ? headWindComponent(w.wind, bearingDeg(ends.from, ends.to)) : w.headWindMs;
   const dh = w.relief && ends ? ends.to.elevM - ends.from.elevM : 0;
   return (segmentEnergyWh(p, { lengthM: e.lengthKm * 1000, speedMs: v / 3.6, gradePct: 0, tempC: w.tempC,
@@ -72,7 +77,7 @@ export function executePlan(plan: TripPlan, g: Graph, nodes: Map<string, Corrido
     if (step.chargeTo !== undefined && soc < step.chargeTo) {
       const here = nodes.get(step.node)!;
       if (w.stationWorks(step.node)) {
-        timeH += chargeTimeH(w.vehicle, here.chargerKW!, Math.max(soc, 0), step.chargeTo);
+        timeH += chargeTimeH(w.vehicle, here.chargerKW!, Math.max(soc, 0), step.chargeTo, here.ac);
         soc = step.chargeTo; chargeStops++;
       } else {
         failed++;
@@ -86,12 +91,12 @@ export function executePlan(plan: TripPlan, g: Graph, nodes: Map<string, Corrido
           .filter((x) => x.km <= 20)
           .sort((a, b) => a.km - b.km)[0];
         if (alt) {
-          const leg = { lengthKm: alt.km, speedKmh: 50 };
+          const leg = { lengthKm: alt.km, speedKmh: WORLD.cityKmh };
           const legEnds = { from: here, to: alt.n };
           const there = soc - trueEdgeWh(w, leg, legEnds) / cap;
           if (there >= 0) {
             detours++;
-            timeH += (2 * alt.km) / 50 + chargeTimeH(w.vehicle, alt.n.chargerKW!, there, step.chargeTo);
+            timeH += (2 * alt.km) / WORLD.cityKmh + chargeTimeH(w.vehicle, alt.n.chargerKW!, there, step.chargeTo, alt.n.ac);
             soc = step.chargeTo - trueEdgeWh(w, leg, { from: alt.n, to: here }) / cap; chargeStops++;
             minSoc = Math.min(minSoc, there);
           }

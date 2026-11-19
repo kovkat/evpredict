@@ -10,6 +10,7 @@ export interface VehicleParams {
   auxBaseW: number;        // базове навантаження допоміжних систем, Вт
   hvacWPerDeg: number;     // приріст потужності HVAC на 1 °C відхилення від комфорту, Вт/°C
   usableKWh: number;       // корисна ємність батареї, кВт·год
+  dcCurve?: readonly (readonly [number, number])[]; // крива DC-заряджання: [SoC, %; потужність, кВт]
 }
 
 export interface Segment {
@@ -19,7 +20,7 @@ export interface Segment {
   tempC: number;     // температура повітря, °C
   headWindMs?: number; // зустрічний вітер, м/с
   accelMs2?: number; // середнє додатне прискорення (для міських ділянок), м/с²
-  stopsPerKm?: number; // кількість зупинок на 1 км
+  stopsPerKm?: number; // розгони з місця на 1 км (еквівалент за кінетичною енергією, див. params.ts)
 }
 
 const G = num("g");
@@ -39,7 +40,7 @@ export function segmentEnergyWh(p: VehicleParams, s: Segment) {
   const fTotal = fRoll + fGrade + fAero;
   const wheelJ = fTotal * s.lengthM;
   let batteryJ = wheelJ >= 0 ? wheelJ / p.drivetrainEff : wheelJ * p.regenEff;
-  // втрати на розгін після зупинок: кінетична енергія, частково повернута рекуперацією
+  // втрати на розгони: кінетична енергія, частково повернута рекуперацією
   const stops = (s.stopsPerKm ?? 0) * (s.lengthM / 1000);
   if (stops > 0) {
     const kinJ = 0.5 * p.massKg * s.speedMs ** 2;

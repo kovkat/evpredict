@@ -20,6 +20,7 @@ export interface StationRecord {
   checkinsOk: number;
   checkinsFailed: number;
   elevM?: number;          // висота станції над рівнем моря, м (з цифрової моделі рельєфу)
+  own?: boolean;           // власна точка заряду користувача (дім, знайома розетка): AC або DC, без даних реєстру
 }
 
 export interface Reliability {
@@ -35,6 +36,7 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
  * заряджання (якщо їх кілька, вища ймовірність, що хоча б одна працює).
  */
 export function reliabilityScore(s: StationRecord, now = new Date()): Reliability {
+  if (s.own) return { score: num("ownStationReliability"), factors: [{ label: "own charging point", delta: num("ownStationReliability") }] };
   const factors: { label: string; delta: number }[] = [];
   // коди статусів Open Charge Map: 10/20/50 — працює, 75 — працює частково, 30 — тимчасово недоступна,
   // 100 — не працює, 150 — запланована, ≥ 200 — виведена з експлуатації; 0 або відсутній — невідомо
@@ -99,6 +101,7 @@ export interface CorridorOptions {
   highwayKmh: number;        // середня швидкість на міжміських ділянках
   connectors: Connector[];   // роз'єми автомобіля
   vehicleMaxDcKw: number;
+  vehicleMaxAcKw?: number;   // бортовий зарядний пристрій: обмежує потужність власних AC-точок
   now?: Date;
 }
 
@@ -118,8 +121,10 @@ export function buildCorridorGraph(a: Place, b: Place, stations: StationRecord[]
     { id: b.id, lat: b.lat, lon: b.lon, x: B.x, y: B.y, elevM: b.elevM ?? 0 },
   ];
   for (const s of stations) {
-    if (!s.dc || o.vehicleMaxDcKw <= 0) continue;
-    if (!s.connectors.some((c) => (o.connectors as string[]).includes(c))) continue;
+    // власну точку користувач позначає для свого автомобіля, тому роз'єми не перевіряються
+    const ac = !!s.own && !s.dc;
+    if (ac ? !(o.vehicleMaxAcKw! > 0) : !s.dc || o.vehicleMaxDcKw <= 0) continue;
+    if (!s.own && !s.connectors.some((c) => (o.connectors as string[]).includes(c))) continue;
     const p = toXY(s.lat, s.lon);
     const along = p.x * ux + p.y * uy;
     const across = Math.abs(-p.x * uy + p.y * ux);
@@ -127,8 +132,8 @@ export function buildCorridorGraph(a: Place, b: Place, stations: StationRecord[]
     if (along < -margin || along > total + margin || across > o.corridorKm) continue;
     const rel = reliabilityScore(s, o.now).score;
     if (rel < num("minNodeReliability")) continue;
-    nodes.push({ id: `s${s.id}`, lat: s.lat, lon: s.lon, x: p.x, y: p.y, elevM: s.elevM ?? 0,
-      chargerKW: Math.min(s.maxKw || num("defaultStationKw"), o.vehicleMaxDcKw), reliability: rel, station: s });
+    nodes.push({ id: s.own ? `own${s.id}` : `s${s.id}`, lat: s.lat, lon: s.lon, x: p.x, y: p.y, elevM: s.elevM ?? 0,
+      chargerKW: Math.min(s.maxKw || num("defaultStationKw"), ac ? o.vehicleMaxAcKw! : o.vehicleMaxDcKw), reliability: rel, station: s, ...(ac ? { ac } : {}) });
   }
   const prog = (n: CorridorNode) => n.x * ux + n.y * uy;
   const edges: RouteEdge[] = [];

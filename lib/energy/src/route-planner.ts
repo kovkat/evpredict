@@ -16,6 +16,7 @@ export interface RoutePlanRequest {
   ratedVehicle: VehicleParams;      // паспортні параметри (для базової моделі)
   connectors: Connector[];
   maxDcKw: number;
+  maxAcKw?: number;                 // бортовий зарядний пристрій, для власних AC-точок
   socStartPct: number;
   reservePct: number;
   tempC: number;
@@ -36,6 +37,8 @@ export interface RouteStop {
   lat: number;
   lon: number;
   maxKw?: number;
+  own?: boolean;                     // власна точка заряду користувача
+  ac?: boolean;
   reliabilityPct?: number;
   socArrivePct: number;
   chargeToPct?: number;
@@ -63,7 +66,7 @@ export interface RoutePlanResult {
   baseline: RouteOption;
   stationsInCorridor: number;
   corridorKm: number;
-  corridorStations: { lat: number; lon: number; reliabilityPct: number; maxKw: number }[];
+  corridorStations: { lat: number; lon: number; reliabilityPct: number; maxKw: number; own?: boolean }[];
 }
 
 const CIRCUITY = num("circuity");
@@ -88,7 +91,7 @@ function planInCorridor(req: RoutePlanRequest, corridorKm: number, allowFallback
   const bestWhKm = Math.min(segmentEnergyWh(req.vehicle, ideal).energyWh, segmentEnergyWh(req.ratedVehicle, ideal).energyWh) * num("edgePruneFactor");
   const maxEdgeKm = Math.min(num("maxEdgeKm"), (req.ratedVehicle.usableKWh * 1000) / bestWhKm);
   const { graph, nodes } = buildCorridorGraph(req.from, req.to, req.stations, {
-    corridorKm, circuity: CIRCUITY, maxEdgeKm, highwayKmh: num("edgeSpeedHighway"), connectors: req.connectors, vehicleMaxDcKw: req.maxDcKw, now: req.now });
+    corridorKm, circuity: CIRCUITY, maxEdgeKm, highwayKmh: num("edgeSpeedHighway"), connectors: req.connectors, vehicleMaxDcKw: req.maxDcKw, vehicleMaxAcKw: req.maxAcKw, now: req.now });
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const k = req.personalFactor;
   const kr = req.roadFactors ?? { city: k, suburban: k, highway: k };
@@ -134,9 +137,10 @@ function planInCorridor(req: RoutePlanRequest, corridorKm: number, allowFallback
       const n = nodeMap.get(s.node) as CorridorNode;
       const stop: RouteStop = { nodeId: s.node, kind: i === 0 ? "origin" : i === pl.steps.length - 1 ? "destination" : "station",
         title: n.station?.title ?? "", town: n.station?.town ?? "", lat: n.lat, lon: n.lon, maxKw: n.chargerKW,
+        ...(n.station?.own ? { own: true } : {}), ...(n.ac ? { ac: true } : {}),
         reliabilityPct: n.reliability !== undefined ? n.reliability * 100 : undefined, socArrivePct: soc * 100, kmFromStart: km };
       if (s.chargeTo !== undefined && soc < s.chargeTo) {
-        const m = chargeTimeH(req.vehicle, n.chargerKW!, Math.max(soc, 0), s.chargeTo) * 60;
+        const m = chargeTimeH(req.vehicle, n.chargerKW!, Math.max(soc, 0), s.chargeTo, n.ac) * 60;
         stop.chargeToPct = s.chargeTo * 100; stop.chargeMinutes = m; charge += m; soc = s.chargeTo;
       }
       // станція, через яку маршрут лише проходить без заряджання, не є зупинкою
@@ -150,7 +154,7 @@ function planInCorridor(req: RoutePlanRequest, corridorKm: number, allowFallback
     baseline: describe(basePlan, false),
     stationsInCorridor: nodes.length - 2,
     corridorKm,
-    corridorStations: nodes.filter((n) => n.chargerKW).map((n) => ({ lat: n.lat, lon: n.lon, reliabilityPct: (n.reliability ?? 0) * 100, maxKw: n.chargerKW! })),
+    corridorStations: nodes.filter((n) => n.chargerKW).map((n) => ({ lat: n.lat, lon: n.lon, reliabilityPct: (n.reliability ?? 0) * 100, maxKw: n.chargerKW!, ...(n.station?.own ? { own: true } : {}) })),
   };
 }
 

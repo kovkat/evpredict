@@ -8,7 +8,7 @@ export interface TripPart {
   type: RoadType;
   km: number;          // довжина частини, км
   speedKmh: number;    // середня швидкість руху (без простоїв), км/год
-  stopsPerKm: number;  // зупинки (світлофори, перехрестя) на 1 км
+  stopsPerKm: number;  // розгони з місця на 1 км: зупинки й пригальмовування в потоці (еквівалент за PKE)
 }
 
 export interface TripInput {
@@ -53,7 +53,7 @@ export function validateTrip(t: TripInput): string[] {
   for (const p of t.parts) {
     if (p.km < 0 || p.km > 2000) errors.push(`Некоректна довжина ${PART_NAME[p.type]}`);
     if (p.km > 0 && (p.speedKmh < 5 || p.speedKmh > 200)) errors.push(`Швидкість ${PART_NAME[p.type]} має бути від 5 до 200 км/год`);
-    if (p.stopsPerKm < 0 || p.stopsPerKm > 10) errors.push(`Некоректна кількість зупинок ${PART_NAME[p.type]}`);
+    if (p.stopsPerKm < 0 || p.stopsPerKm > 10) errors.push(`Некоректна кількість розгонів ${PART_NAME[p.type]}`);
   }
   if (t.tempC < -40 || t.tempC > 50) errors.push("Температура має бути від −40 до 50 °C");
   if (t.elevGainM < 0 || t.elevLossM < 0) errors.push("Набір і спуск висоти не можуть бути від'ємними");

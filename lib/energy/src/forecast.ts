@@ -46,10 +46,16 @@ export interface Forecast {
 
 const pct = (x: number) => Math.round(x * 100);
 
-const quantile = (xs: number[], q: number) => {
+/** Порядкова статистика для скінченної вибірки (конформне передбачення): ⌈(n+1)·q⌉-те значення з n.
+ *  На відміну від інтерпольованого квантиля, не звужує інтервал на короткій історії: для
+ *  взаємозамінних поїздок частка наступних поїздок у межах не менша за q. */
+export const conformalUpper = (xs: number[], q: number) => {
   const s = [...xs].sort((a, b) => a - b);
-  const pos = (s.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos);
-  return s[lo] + (s[hi] - s[lo]) * (pos - lo);
+  return s[Math.min(s.length - 1, Math.ceil((s.length + 1) * q) - 1)];
+};
+export const conformalLower = (xs: number[], q: number) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s[Math.max(0, Math.floor((s.length + 1) * q) - 1)];
 };
 
 /** Відносний інтервал прогнозу: за історією користувача (не менше J_min поїздок) або типовий */
@@ -57,16 +63,16 @@ export function predictionInterval(k: number, ratios: number[] = []): [number, n
   if (ratios.length < num("intervalMinTrips")) { const [a, b] = list("defaultInterval"); return [a, b]; }
   const rel = ratios.map((r) => r / k);
   const [qLo, qHi] = list("intervalQuantiles"), [wLo, wHi] = list("intervalMinWidth");
-  return [Math.min(quantile(rel, qLo), wLo), Math.max(quantile(rel, qHi), wHi)];
+  return [Math.min(conformalLower(rel, qLo), wLo), Math.max(conformalUpper(rel, qHi), wHi)];
 }
 
-/** Запас на невизначеність прогнозу для планування маршруту: квантиль q_σ відношень «факт / прогноз»,
+/** Запас на невизначеність прогнозу для планування маршруту: верхня межа q_σ відношень «факт / прогноз»,
  *  нормованих на k, у межах [σ_min; σ_max]. За браком історії (менше J_σ надійних поїздок) – типовий запас σ_0. */
 export const DEFAULT_SAFETY = num("safetyDefault");
 export function safetyFromHistory(k: number, ratios: number[] = []): number {
   if (ratios.length < num("safetyMinTrips")) return DEFAULT_SAFETY;
   const [lo, hi] = list("safetyClip");
-  return Math.min(hi, Math.max(lo, quantile(ratios.map((r) => r / k), num("safetyQuantile"))));
+  return Math.min(hi, Math.max(lo, conformalUpper(ratios.map((r) => r / k), num("safetyQuantile"))));
 }
 
 export function forecastTrip(req: ForecastRequest): Forecast {

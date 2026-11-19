@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   VEHICLE_CATALOG, findVehicle, segmentEnergyWh, updatePersonalFactor, DEFAULT_PARTS, tripEnergyWh, validateTrip,
   explainShapley, FACTORS, forecastTrip, generateTrips, DRIVER_PROFILES, replayHistory, SimulatedTripSource, summarize,
-  buildGraph, plan, reliefEnergyWh, type TripInput, safetyFromHistory, DEFAULT_SAFETY, predictionInterval,
+  buildGraph, plan, reliefEnergyWh, type TripInput, safetyFromHistory, DEFAULT_SAFETY, predictionInterval, dcPowerKw, chargeTimeH, num, list,
 } from "../src/index.ts";
 
 const fiat = findVehicle("fiat-500e-2013")!.params;
@@ -181,9 +182,12 @@ test("запас σ та інтервал прогнозу: за історіє�
   const noisy = Array.from({ length: 20 }, (_, i) => 0.8 + i * 0.03);                // 0,80…1,37
   const s = safetyFromHistory(1.0, noisy);
   assert.ok(s > 1.2 && s <= 1.5, String(s));                                         // нестабільний водій – більший запас
-  assert.deepEqual(predictionInterval(1, [1, 1]), [0.9, 1.1]);
+  assert.deepEqual(predictionInterval(1, [1, 1]), list("defaultInterval"));
   const [lo, hi] = predictionInterval(1.0, noisy);
   assert.ok(lo <= 0.97 && hi >= 1.03 && lo < hi);
+  // конформні межі: з 20 значень беремо 2-ге і 19-те (⌊21·0,1⌋ і ⌈21·0,9⌉)
+  assert.ok(Math.abs(lo - 0.83) < 1e-9 && Math.abs(hi - 1.34) < 1e-9, `${lo} ${hi}`);
+  assert.ok(Math.abs(s - 1.34) < 1e-9);
 });
 
 test("текстове пояснення: лише числа розрахунку, найбільші внески, типографський мінус", () => {
@@ -204,6 +208,24 @@ test("коридор пошуку станцій розширюється, як�
     socStartPct: 90, reservePct: 10, tempC: 10, personalFactor: 1, stations: st, now: new Date("2026-10-01") });
   assert.equal(r.corridorKm, 60);
   assert.ok(r.evpredict.found && !r.evpredict.risky && r.evpredict.stops.some((s) => s.kind === "station"));
+});
+
+test("власна AC-точка: авто без DC отримує план, потужність обмежена бортовим зарядним пристроєм", async () => {
+  const { planRoute } = await import("../src/route-planner.ts");
+  const m = findVehicle("fiat-500e-2013")!;
+  const A = { id: "a", lat: 50, lon: 30 }, B = { id: "b", lat: 50, lon: 31.6 }; // ≈ 115 км по прямій, ≈ 143 км дорогою
+  const own = { ...station({ id: 1, lat: 50.02, lon: 30.8, connectors: [] }), maxKw: 11, dc: false, own: true, statusTypeId: null, lastVerified: null };
+  const go = (st: typeof own[]) => planRoute({ from: A, to: B, vehicle: m.params, ratedVehicle: m.params, connectors: m.connectors,
+    maxDcKw: m.maxDcKw, maxAcKw: m.maxAcKw, socStartPct: 100, reservePct: 10, tempC: 10, personalFactor: 1, stations: st, now: new Date("2026-10-01") });
+  assert.equal(go([]).evpredict.found, false);
+  const r = go([own]);
+  const stop = r.evpredict.stops.find((s) => s.kind === "station")!;
+  assert.ok(r.evpredict.found && !r.evpredict.risky && stop.own && stop.ac && stop.reliabilityPct === 100);
+  assert.equal(stop.maxKw, m.maxAcKw);                                          // 6,6 кВт бортового пристрою, а не 11 кВт точки
+  const kwh = (m.params.usableKWh * (stop.chargeToPct! - stop.socArrivePct)) / 100;
+  assert.ok(Math.abs(stop.chargeMinutes! - ((kwh / m.maxAcKw) * 60 + num("connectMinutes"))) < 2, String(stop.chargeMinutes));
+  // власна DC-точка не використовується автомобілем без DC
+  assert.equal(go([{ ...own, dc: true }]).evpredict.found, false);
 });
 
 test("індекс надійності: станція нижче порогу не використовується, штраф обирає надійнішу з близьких за часом", () => {
@@ -234,8 +256,8 @@ test("маршрут: підйом до пункту призначення і �
   assert.equal(flat.climbM, 0);
   assert.ok(up.energyKWh > flat.energyKWh && down.energyKWh < flat.energyKWh);
   assert.ok(Math.abs(up.climbM - 600) < 1e-9 && Math.abs(down.descentM - 600) < 1e-9);
-  // підйом на 600 м для авто масою 1840 кг: m·g·h / ККД ≈ 3,4 кВт·год (без урахування k)
-  assert.ok(Math.abs(up.energyKWh - flat.energyKWh - (1840 * 9.81 * 600) / 0.88 / 3.6e6) < 0.05);
+  // підйом на 600 м для авто масою 1840 кг: m·g·h / ККД ≈ 3,6 кВт·год (без урахування k)
+  assert.ok(Math.abs(up.energyKWh - flat.energyKWh - (1840 * 9.81 * 600) / num("drivetrainEff") / 3.6e6) < 0.05);
   assert.ok(head.energyKWh > flat.energyKWh && tail.energyKWh < flat.energyKWh);
 });
 
@@ -275,7 +297,7 @@ test("симулятор виконання: рельєф і вітер у «с�
   const { graph, nodes } = buildCorridorGraph(A, B, st, { corridorKm: 30, circuity: 1.25, maxEdgeKm: 450, highwayKmh: 90,
     connectors: m.connectors, vehicleMaxDcKw: m.maxDcKw, now: new Date("2026-10-01") });
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const stops = (km: number) => (km > 25 ? 0.05 : 1);
+  const stops = (km: number) => (km > num("highwayEdgeMinKm") ? num("edgeStopsHighway") : num("edgeStopsCity"));
   const edge = (relief: boolean) => (e: { from: string; to: string; lengthKm: number; speedKmh: number }) => {
     const dh = nodeMap.get(e.to)!.elevM - nodeMap.get(e.from)!.elevM;
     return segmentEnergyWh(p, { lengthM: e.lengthKm * 1000, speedMs: e.speedKmh / 3.6, gradePct: 0, tempC: 10, stopsPerKm: stops(e.lengthKm) }).energyWh
@@ -317,7 +339,7 @@ test("симулятор виконання: непрацююча станція
   const { executePlan } = await import("../src/execution.ts");
   const m = findVehicle("kia-niro-ev-64")!;
   const p = m.params, normal = DRIVER_PROFILES.find((d) => d.id === "normal")!;
-  const A = { id: "A", lat: 50, lon: 30 }, B = { id: "B", lat: 50, lon: 37 };
+  const A = { id: "A", lat: 50, lon: 30.5 }, B = { id: "B", lat: 50, lon: 36.5 };
   // дві станції на відстані ≈ 7 км одна від одної посередині маршруту
   const st = [station({ id: 1, lat: 50, lon: 33.5, connectors: ["CCS"], points: 2 }), station({ id: 2, lat: 50.05, lon: 33.55, connectors: ["CCS"], points: 2 })];
   const { graph, nodes } = buildCorridorGraph(A, B, st, { corridorKm: 30, circuity: 1.25, maxEdgeKm: 450, highwayKmh: 90,
@@ -332,4 +354,29 @@ test("симулятор виконання: непрацююча станція
   // «справжнє» споживання втричі вище за модель – розряд на першій же ділянці
   const bad = executePlan(pl, graph, nodeMap, { ...world, stationWorks: () => true, edgeNoise: () => 3 }, 0.9, 0.1);
   assert.ok(!bad.completed && bad.minSoc < 0 && bad.belowReserve);
+});
+
+test("довідник автомобілів збігається з витягом Open EV Data, крива задає час заряджання", () => {
+  const oed = JSON.parse(readFileSync(new URL("../../../research/params/data/oed_vehicles.json", import.meta.url), "utf8")).vehicles;
+  for (const m of VEHICLE_CATALOG) {
+    const o = oed[m.id];
+    assert.equal(m.params.usableKWh, o.usable_kwh, m.id);
+    if (m.maxDcKw > 0) {
+      assert.equal(m.maxDcKw, o.dc_max_kw, m.id);
+      assert.deepEqual(m.params.dcCurve, o.curve, m.id);
+    }
+  }
+  // маса, C_d і площа міделя – з research/params/vehicle_specs.py
+  const specs = JSON.parse(readFileSync(new URL("../../../research/params/results/vehicle_specs.json", import.meta.url), "utf8")).vehicles;
+  for (const m of VEHICLE_CATALOG) {
+    const v = specs[m.id];
+    assert.deepEqual([m.params.massKg, m.params.cd, m.params.frontalAreaM2], [v.massKg, v.cd, v.frontalAreaM2], m.id);
+  }
+  const leaf = findVehicle("nissan-leaf-40")!.params;
+  assert.equal(dcPowerKw(leaf, 50, 0.3), Math.min(50, 41 + (4 * 30) / 62));
+  assert.equal(dcPowerKw(leaf, 22, 0.3), 22);
+  const generic = { ...leaf, dcCurve: undefined };
+  assert.equal(dcPowerKw(generic, 100, 0.2), 100);
+  assert.ok(Math.abs(dcPowerKw(generic, 100, 0.85) - 42.5) < 1e-9);
+  assert.ok(chargeTimeH(leaf, 50, 0.1, 0.8) > chargeTimeH(leaf, 50, 0.1, 0.6));
 });

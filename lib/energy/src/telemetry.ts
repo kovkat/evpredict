@@ -1,6 +1,7 @@
 // Підсистема отримання телеметрії: уніфікований інтерфейс джерела та програмний симулятор поїздок
 import { type VehicleParams, airDensity } from "./physics.ts";
 import { createRng } from "./rng.ts";
+import { num } from "./params.ts";
 
 export interface TelemetrySample {
   t: number;          // час від початку поїздки, с
@@ -39,7 +40,7 @@ export class SimulatedTripSource implements TelemetrySource {
     const overSpeed = 1 + 0.05 * (o.style - 1);    // відхилення крейсерської швидкості
     let t = 0, x = 0, v = 0, elev = 150, soc = o.socStartPct, wait = 0;
     const rho = airDensity(o.tempC);
-    const auxW = p.auxBaseW + p.hvacWPerDeg * Math.abs(o.tempC - 21);
+    const auxW = p.auxBaseW + p.hvacWPerDeg * Math.abs(o.tempC - num("comfortTemp"));
     for (const seg of this.route) {
       const segEnd = x + seg.lengthKm * 1000; const theta = Math.atan(seg.gradePct / 100);
       const vCruise = (seg.targetKmh * overSpeed) / 3.6;
