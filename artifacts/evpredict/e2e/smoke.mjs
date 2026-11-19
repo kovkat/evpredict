@@ -136,6 +136,23 @@ await t("Е18 зарядні станції поблизу зі знімка р�
 await t("Е19 маршрут: авто без DC-заряджання → пояснення", async () => {
   await p.click("[data-testid=link-nav-routes]"); await p.waitForSelector("[data-testid=text-route-no-dc]");
 });
+await t("Е19а власна точка заряду: авто без DC доїжджає Київ → Житомир через неї", async () => {
+  await p.click("[data-testid=link-nav-charging]"); await p.waitForSelector("[data-testid=own-stations]");
+  for (const [title, coords] of [["Дача", "50.38 29.90"], ["Батьки", "50,32, 29,28"]]) {
+    await p.fill("[data-testid=input-own-title]", title); await p.fill("[data-testid=input-own-coords]", coords);
+    await p.click("[data-testid=button-own-add]"); await p.waitForSelector(`[data-testid=list-own-stations] >> text=${title}`);
+  }
+  // ≈ 164 км дорогою для 21 кВт·год батареї – лише із заряджанням у дорозі
+  await p.click("[data-testid=link-nav-routes]"); await p.selectOption("[data-testid=select-to]", "zhytomyr");
+  await p.fill("[data-testid=input-route-soc]", "100");
+  await p.waitForSelector("[data-testid=card-evpredict] [data-testid=text-own-stop]");
+  if (!/Дача|Батьки/.test(await p.textContent("[data-testid=card-evpredict]"))) throw new Error("own stop title");
+  await p.screenshot({ path: `${SHOTS}/route-own-station.png`, fullPage: true });
+  await p.selectOption("[data-testid=select-to]", "lviv"); await p.fill("[data-testid=input-route-soc]", "90");
+  await p.click("[data-testid=link-nav-charging]");
+  for (let i = 0; i < 2; i++) { await p.click("[data-testid=list-own-stations] button >> nth=0"); await p.waitForTimeout(400); }
+  await p.waitForSelector("[data-testid=list-own-stations]", { state: "detached" });
+});
 await t("Е20 маршрут Київ → Львів: EVPredict проти простого планувальника, збереження плану", async () => {
   await p.click("[data-testid=link-nav-vehicle]"); await p.click("[data-testid=button-edit-vehicle]");
   await p.selectOption("[data-testid=select-vehicle-model]", "nissan-leaf-40"); await p.fill("[data-testid=input-vehicle-soh]", "88");
@@ -143,6 +160,7 @@ await t("Е20 маршрут Київ → Львів: EVPredict проти пр�
   await p.click("[data-testid=link-nav-routes]"); await p.waitForSelector("[data-testid=card-evpredict] ol li");
   const c = await p.textContent("[data-testid=text-route-conditions]");
   if (!c.includes("У розрахунку") || !c.includes("Рельєф: Київ")) throw new Error("conditions: " + c);
+  if (!(await p.textContent("[data-testid=cold-start-note]")).includes("σ = 1,32")) throw new Error("cold-start note");
   await p.screenshot({ path: `${SHOTS}/route-weather.png`, fullPage: true });
   await p.uncheck("[data-testid=checkbox-route-weather]"); await p.waitForSelector("[data-testid=input-route-temp]");
   await p.fill("[data-testid=input-route-temp]", "-5"); await p.waitForTimeout(1500);

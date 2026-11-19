@@ -1,9 +1,11 @@
-// Зарядні станції поблизу: знімок відкритого реєстру Open Charge Map для України з індексом надійності кожної станції
+// Зарядні станції поблизу: знімок відкритого реєстру Open Charge Map для України з індексом надійності кожної станції;
+// власні точки заряду користувача, яких немає в реєстрі
 import { Activity, ExternalLink, MapPinned, PlugZap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { num, type City } from "@workspace/energy";
 import { EmptyState, Notice, PageHeader, SelectField, StatusPill, Surface } from "@/components/kit";
 import { apiFetch } from "@/lib/api";
+import { OwnStations } from "@/components/own-stations";
 import { useVehicle } from "@/lib/storage";
 import { useCatalogEntry } from "@/lib/use-energy";
 import { day, fmt, plural } from "@/lib/format";
@@ -67,6 +69,7 @@ export function ChargingPage() {
         action={<StatusPill muted>{data ? `Знімок ${day(data.snapshot)} · ${data.total} станцій` : "Open Charge Map"}</StatusPill>} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[.7fr_1.3fr]">
+        <div className="grid h-fit gap-5">
         <Surface className="h-fit p-5 md:p-6">
           <div className="mb-5 flex items-center gap-3"><PlugZap size={17} className="text-[hsl(var(--primary))]" /><h2 className="text-[15px] font-bold">Пошук</h2></div>
           <div className="grid gap-4">
@@ -99,6 +102,8 @@ export function ChargingPage() {
             </Notice>
           </div>
         </Surface>
+        <OwnStations maxAcKw={model?.maxAcKw} maxDcKw={model?.maxDcKw} />
+        </div>
 
         <Surface className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-5 py-4">

@@ -18,7 +18,7 @@ interface Conditions {
   weather: { from: WeatherPoint; to: WeatherPoint; bearingDeg: number } | null;
   relief: boolean; fromElevM: number | null; toElevM: number | null;
 }
-type PlanResponse = RoutePlanResult & { from: City; to: City; dcCapable: boolean; snapshot: string; safetyFactor: number; conditions: Conditions };
+type PlanResponse = RoutePlanResult & { from: City; to: City; dcCapable: boolean; ownStations: number; snapshot: string; safetyFactor: number; conditions: Conditions };
 interface SavedPlan { id: number; fromCity: string; toCity: string; km: number; totalMinutes: number; chargeMinutes: number; minSocPct: number; arriveSocPct: number; tempC: number; risky: boolean; createdAt: string; vehicleId: string }
 
 const stopsCount = (o: RouteOption) => o.stops.length - 2;
@@ -40,6 +40,7 @@ function RouteSketch({ plan }: { plan: PlanResponse }) {
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" data-testid="svg-route-sketch" role="img" aria-label="Схема маршруту">
       {plan.corridorStations.map((c, i) => {
         const [x, y] = xy(c);
+        if (c.own) return <rect key={i} x={x - 3.5} y={y - 3.5} width={7} height={7} transform={`rotate(45 ${x} ${y})`} fill="hsl(38 92% 62%)" />;
         return <circle key={i} cx={x} cy={y} r={2.2} fill={c.reliabilityPct >= rhoMin ? "hsl(var(--muted-foreground) / .55)" : "hsl(var(--destructive) / .6)"} />;
       })}
       {plan.baseline.found && <polyline points={line(plan.baseline)} fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="6 5" />}
@@ -59,7 +60,7 @@ function OptionCard({ title, subtitle, option, highlight, reservePct, testId }: 
       <Surface className="p-5" data-testid={`card-${testId}`}>
         <div className="text-[14px] font-bold">{title}</div>
         <div className="mb-3 text-[10px] text-dim">{subtitle}</div>
-        <div className="text-[12px] text-dim">Зі станціями з відкритого реєстру допустимого плану немає.</div>
+        <div className="text-[12px] text-dim">Допустимого плану немає ні зі станціями відкритого реєстру, ні з вашими точками заряду. Якщо знаєте, де зарядитися в дорозі (дім, знайома розетка), додайте точку на сторінці «Зарядні станції».</div>
       </Surface>
     );
   }
@@ -91,7 +92,9 @@ function OptionCard({ title, subtitle, option, highlight, reservePct, testId }: 
             <span className="font-mono text-dim">{fmt(st.kmFromStart, 0)} км</span>
             <span>
               <span className="font-bold">{st.kind === "station" ? (st.title || "Зарядна станція") : st.kind === "origin" ? "Старт" : "Прибуття"}</span>
-              {st.kind === "station" && <span className="text-dim"> · {st.town} · {fmt(st.maxKw ?? 0, 0)} кВт · надійність {fmt(st.reliabilityPct ?? 0, 0)} %</span>}
+              {st.kind === "station" && (st.own
+                ? <span className="text-dim" data-testid="text-own-stop"> · моя точка · {fmt(st.maxKw ?? 0, 1)} кВт {st.ac ? "AC" : "DC"}</span>
+                : <span className="text-dim"> · {st.town} · {fmt(st.maxKw ?? 0, 0)} кВт · надійність {fmt(st.reliabilityPct ?? 0, 0)} %</span>)}
               <span className="block text-dim">
                 {st.kind === "origin" ? `виїзд з ${fmt(st.socArrivePct, 0)} %` : `прибуття з ${st.socArrivePct < 0 ? "0" : fmt(st.socArrivePct, 0)} %`}
                 {st.chargeToPct !== undefined && ` → зарядити до ${fmt(st.chargeToPct, 0)} % (${fmt(st.chargeMinutes ?? 0, 0)} хв)`}
@@ -256,7 +259,9 @@ export function RoutePlannerPage() {
           {plan && !plan.dcCapable && (
             <Surface className="flex items-start gap-3 p-4 text-[12px]" data-testid="text-route-no-dc">
               <PlugZap size={16} className="mt-0.5 shrink-0 text-[hsl(38_92%_62%)]" />
-              Цей автомобіль не підтримує швидке заряджання постійним струмом, тому можлива лише пряма поїздка. Для міжміських маршрутів використовуються лише станції постійного струму.
+              {plan.ownStations
+                ? "Цей автомобіль не підтримує швидке заряджання постійним струмом, тому з реєстру станцій нічого не підходить; для заряджання в дорозі використовуються лише ваші власні AC-точки."
+                : "Цей автомобіль не підтримує швидке заряджання постійним струмом, тому можлива лише пряма поїздка. Для міжміських маршрутів використовуються станції постійного струму з реєстру; власні точки заряду (дім, знайома розетка) можна додати на сторінці «Зарядні станції»."}
             </Surface>
           )}
           {plan && ev && bl && (
@@ -302,10 +307,19 @@ export function RoutePlannerPage() {
                 <div className="mt-2 flex flex-wrap gap-4 text-[10px] text-dim">
                   <span className="flex items-center gap-1.5"><span className="inline-block h-[3px] w-5 bg-[hsl(var(--primary))]" />EVPredict</span>
                   <span className="flex items-center gap-1.5"><span className="inline-block h-0 w-5 border-t-2 border-dashed border-[hsl(var(--muted-foreground))]" />Простий планувальник</span>
-                  <span className="flex items-center gap-1.5"><BatteryCharging size={12} />{plan.stationsInCorridor} сумісних DC-станцій у смузі {plan.corridorKm} км від прямої</span>
+                  <span className="flex items-center gap-1.5"><BatteryCharging size={12} />{plan.stationsInCorridor} сумісних {plan.ownStations ? "станцій і власних точок" : "DC-станцій"} у смузі {plan.corridorKm} км від прямої</span>
+                  {plan.corridorStations.some((c) => c.own) && <span className="flex items-center gap-1.5"><span className="inline-block h-2 w-2 rotate-45 bg-[hsl(38_92%_62%)]" />мої точки заряду</span>}
                   <span className="flex items-center gap-1.5"><Clock size={12} />час заряджання враховує {num("connectMinutes")} хв на підключення</span>
                 </div>
               </Surface>
+              {(!usePersonal || !roadFactorsOk) && (
+                <div className="rounded-md border border-[hsl(var(--border))] px-4 py-3 text-xs text-dim" data-testid="cold-start-note">
+                  Запас σ = {fmt(num("safetyDefault"), 2)} – консервативна оцінка, поки історії поїздок немає або вона не враховується:
+                  у калібруванні такий запас покриває 90 % водіїв. Після {num("safetyMinTrips")} поїздок із надійними показами SoC
+                  (і з увімкненим урахуванням історії) його замінить ваш власний запас.
+                  Позначка «Без запасу на невизначеність» означає, що з цим запасом маршрут не проходить, а не що він неможливий.
+                </div>
+              )}
               <div className="grid gap-5 lg:grid-cols-2">
                 <OptionCard title="EVPredict" subtitle={`Персональне споживання, надійність станцій, запас σ = ${fmt(plan.safetyFactor, 2)}`} option={ev} highlight reservePct={reserveNum} testId="evpredict" />
                 <OptionCard title="Простий планувальник" subtitle={`Дейкстра · паспортне споживання · заряджання до ${fmt(num("baselineChargeTo") * 100, 0)} %`} option={bl} reservePct={reserveNum} testId="baseline" />

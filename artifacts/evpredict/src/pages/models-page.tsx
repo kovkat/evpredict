@@ -26,12 +26,13 @@ const GROUPS: Record<string, string> = {
 const ORIGIN: Record<ParamDef["origin"], { label: string; cls: string }> = {
   physical: { label: "фізична стала", cls: "text-[hsl(var(--primary))]" },
   regulation: { label: "норматив", cls: "text-[hsl(var(--primary))]" },
+  literature: { label: "дослідження", cls: "text-[hsl(var(--primary))]" },
+  calibrated: { label: "калібровано", cls: "text-[hsl(var(--primary))]" },
   derived: { label: "виведено", cls: "text-[hsl(var(--primary))]" },
   convention: { label: "статистична домовленість", cls: "text-[hsl(200_80%_65%)]" },
   definition: { label: "визначення", cls: "text-[hsl(200_80%_65%)]" },
-  provisional: { label: "попереднє", cls: "text-[hsl(38_92%_62%)]" },
+  provisional: { label: "аналіз чутливості", cls: "text-[hsl(38_92%_62%)]" },
 };
-const PLAN: Record<string, string> = { literature: "літературне джерело", calibration: "калібрування", sensitivity: "аналіз чутливості", "road-data": "дані дорожньої мережі" };
 const PLANNERS: Record<string, string> = {
   naive: "Пряма поїздка без енергетичних обмежень", baseline: "Дейкстра з постійним споживанням", physics: "EVPredict: фізична модель",
   personal: "+ персоналізація і запас σ", full: "+ надійність станцій і перепланування",
@@ -69,7 +70,7 @@ export function ModelsPage() {
   const benchTrips = bench[0]?.trips ?? 0;
 
   const models = [
-    { icon: BrainCircuit, title: "Фізична модель споживання", text: "Енергія з рівняння руху: опір кочення, аеродинамічний опір, розгони після зупинок, рельєф з рекуперацією, власні потреби і клімат-система залежно від температури. Параметри автомобіля – з довідника, ємність – з урахуванням SoH." },
+    { icon: BrainCircuit, title: "Фізична модель споживання", text: "Енергія з рівняння руху: опір кочення, аеродинамічний опір, розгони і гальмування в потоці (за циклом WLTC), рельєф з рекуперацією, власні потреби і клімат-система залежно від температури. ККД і навантаження – з опублікованих вимірювань; маса і C_d – з даних виробників, площа міделя – оцінка за шириною і висотою; ємність і крива DC-заряджання – з Open EV Data, з урахуванням SoH." },
     { icon: Sparkles, title: "Персоналізація", text: `Коефіцієнт k уточнюється після кожної надійної поїздки експоненційним згладжуванням (α = ${fmt(num("ewmaAlpha"), 2)}), обмеженим межами ${list("ratioClip").map((x) => fmt(x, 1)).join("…")}. Коефіцієнти за типами доріг – гребенева регресія (λ = ${fmt(num("ridgeLambda"), 0)}).` },
     { icon: Sigma, title: "Інтервал і запас σ", text: `Межі прогнозу – квантилі ${list("intervalQuantiles").map((x) => fmt(x, 1)).join(" і ")} відношень «факт / прогноз». Запас для маршрутів σ – квантиль ${fmt(num("safetyQuantile"), 1)}, від ${num("safetyMinTrips")} надійних поїздок.` },
     { icon: ChartNoAxesCombined, title: "Пояснення прогнозу", text: `Точні значення Шеплі за ${FACTORS.length} чинниками: ${FACTORS.map((f) => factorName(f, "uk")).join(", ")}. Сума внесків дорівнює прогнозу.` },
@@ -195,7 +196,7 @@ export function ModelsPage() {
                   <td className="px-3 py-2">{p.name}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right font-mono">{valueOf(p)}</td>
                   <td className="px-5 py-2"><span className={ORIGIN[p.origin].cls}>{ORIGIN[p.origin].label}</span>
-                    <span className="text-dim">{p.origin === "provisional" ? ` · обґрунтування: ${PLAN[p.plan!]}` : p.ref ? ` · ${p.ref}` : p.note ? ` · ${p.note}` : ""}</span></td>
+                    <span className="text-dim">{p.origin === "provisional" ? " · прямого джерела немає, вплив перевірено зміною ±50 %" : p.ref ? ` · ${p.ref}` : p.note ? ` · ${p.note}` : ""}</span></td>
                 </tr>
               ))}
             </tbody>
